@@ -19,7 +19,7 @@ const client = new pg.Client({
     ssl: true
 });
 
-client.connect().catch(e => console.log(e));
+client.connect().then(res => console.log("You are a straight up moron")).catch(e => console.log(e));
 
 logger.info(`connecting to {
     host: ${client.host},
@@ -29,13 +29,13 @@ logger.info(`connecting to {
     database: ${client.database}
 }`);
 
-app.use(express.static('build'));
-app.use(express.json());
-app.use(middleware.requestLogger);
+// app.use(express.static('build'));
+// app.use(express.json());
+// app.use(middleware.requestLogger);
 
-//app.use('/api/notes', notesRouter);
+// //app.use('/api/notes', notesRouter);
 
-app.use(middleware.unknownEndpoint);
-app.use(middleware.errorHandler);
+// app.use(middleware.unknownEndpoint);
+// app.use(middleware.errorHandler);
 
-module.exports = app;
+// module.exports = app;
