@@ -1,0 +1,7 @@
+- Download project and run `npm install`
+- Use `npm run dev` to start the development server.
+- If a `.env` file does not currently exist in the repo root directory, create one with:
+    - PORT=<custom port (optionally, 5000)>
+    - MONGODB_USER=<username>
+    - MONGODB_PASS=<password>
+    - MONGODB_SERVER=<server>
