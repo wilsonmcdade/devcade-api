@@ -1,0 +1,28 @@
+const os = require('os');
+const logger = require('../utils/logger');
+const gamesRouter = require('express').Router();
+
+const multer = require('multer');
+const { countBy } = require('underscore');
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, "C:/Users/Benjamin Piro/Desktop/Devcade-api/uploads")
+    },
+    filename: (req, file, cb) => {
+        cb(null, file.originalname)
+    }
+});
+const upload = multer({storage: storage});
+
+gamesRouter.post('/upload', upload.single('file'), (req, res) => {
+    const title = req.body.title;
+    const file = req.file;
+
+    console.log(title);
+    console.log(file);
+
+    res.sendStatus(200);
+});
+
+module.exports = gamesRouter;
