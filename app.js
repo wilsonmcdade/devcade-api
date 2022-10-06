@@ -17,7 +17,7 @@ db.connect()
         console.log("Connected to DB");
         // do work
     })
-    .catch(err => console.log(e));
+    .catch(err => console.log(err));
 
 db.disconnect()
 

@@ -4,7 +4,7 @@ const pg = require('pg');
 const client = new pg.Client({
     host: config.PSQL_URI,
     user: config.PSQL_USER,
-    port: config.PORT,
+    port: config.PSQL_PORT,
     password: config.PSQL_PASS,
     database: config.PSQL_USER,
     ssl: true
