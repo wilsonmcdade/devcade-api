@@ -1,4 +1,5 @@
-const config = require('./utils/config');
+// const config = require('./utils/config');
+const db = require('./utils/database');
 const express = require('express');
 const app = express();
 const middleware = require('./utils/middleware');
@@ -10,32 +11,30 @@ const pg = require('pg');
 
 
 // ##### POSTGRES CONNECTION #####
-const client = new pg.Client({
-    host: config.PSQL_URI,
-    user: config.PSQL_USER,
-    port: config.PORT,
-    password: config.PSQL_PASS,
-    database: config.PSQL_USER,
-    ssl: true
-});
+db.connect()
+    .then(res => {
+        console.log("Connected to DB");
+        // do work
+    })
+    .catch(err => console.log(e));
 
-client.connect().then(res => console.log("You are a straight up moron")).catch(e => console.log(e));
+db.disconnect()
 
 logger.info(`connecting to {
-    host: ${client.host},
-    user: ${client.user},
-    port: ${client.port},
-    password: ${client.password},
-    database: ${client.database}
+    host: ${db.client.host},
+    user: ${db.client.user},
+    port: ${db.client.port},
+    password: ${db.client.password},
+    database: ${db.client.database}
 }`);
 
-// app.use(express.static('build'));
-// app.use(express.json());
-// app.use(middleware.requestLogger);
+app.use(express.static('build'));
+app.use(express.json());
+app.use(middleware.requestLogger);
 
-// //app.use('/api/notes', notesRouter);
+//app.use('/api/notes', notesRouter);
 
-// app.use(middleware.unknownEndpoint);
-// app.use(middleware.errorHandler);
+app.use(middleware.unknownEndpoint);
+app.use(middleware.errorHandler);
 
-// module.exports = app;
+module.exports = app;
