@@ -12,22 +12,9 @@ const gamesRouter = require('./controllers/games');
 
 
 // ##### POSTGRES CONNECTION #####
-db.connect()
-    .then(res => {
-        console.log("Connected to DB");
-        // do work
-    })
-    .catch(err => console.log(err));
-
-db.disconnect()
-
-logger.info(`connecting to {
-    host: ${db.client.host},
-    user: ${db.client.user},
-    port: ${db.client.port},
-    password: ${db.client.password},
-    database: ${db.client.database}
-}`);
+// db.openConnection((client) => {
+//     return 0;
+// });
 
 app.use(express.static('build'));
 app.use(express.json());
