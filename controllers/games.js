@@ -1,11 +1,12 @@
 const os = require('os');
-const S3 = require('aws-s3');
-
+const config = require('../utils/config');
 const logger = require('../utils/logger');
 const gamesRouter = require('express').Router();
 
+// utilities
 const multer = require('multer');
-const { countBy } = require('underscore');
+const { ListBucketsCommand } = require('@aws-sdk/client-s3');
+const { s3Client } = require('../utils/s3Client');
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -17,24 +18,16 @@ const storage = multer.diskStorage({
 });
 const upload = multer({storage: storage});
 
-gamesRouter.post('/upload', upload.single('file'), (req, res) => {
+gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
     const title = req.body.title;
     const file = req.file;
 
     console.log(title);
     console.log(file);
-    console.log(`Current directory: ${process.cwd()}`);
 
-    const config = {
-        bucketName: 'devcade',
-        dirName: 'devcade',
-        region: 'eu-west-1',
-        accessKeyId: 'devcade2022AccessKeyinconstantly38254-unaccomplished',
-        secretAccessKey: 'devcade2022SecretKeylabor-intensive1699-wretchedness'
-    }
+    const response = await s3Client.send(new ListBucketsCommand({}));
 
-    const S3Client = new S3(config);
-    S3Client.upload()
+    console.log(response);
 
     res.sendStatus(200);
 });

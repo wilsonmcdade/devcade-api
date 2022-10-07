@@ -9,6 +9,7 @@ const PSQL_URI = process.env.PSQL_URI;
 
 const S3_ACCESSKEYID = process.env.S3_ACCESSKEYID;
 const S3_SECRETACCESSKEY = process.env.S3_SECRETACCESSKEY;
+const S3_ENDPOINT = process.env.S3_ENDPOINT;
 
 module.exports = {
     API_PORT,
@@ -17,5 +18,6 @@ module.exports = {
     PSQL_PASS,
     PSQL_URI,
     S3_ACCESSKEYID,
-    S3_SECRETACCESSKEY
+    S3_SECRETACCESSKEY,
+    S3_ENDPOINT
 };

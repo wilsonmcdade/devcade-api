@@ -11,8 +11,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.186.0",
     "argon2": "^0.28.5",
-    "aws-s3": "^2.0.5",
+    "boto3": "0.0.1",
     "dotenv": "^16.0.0",
     "email-check": "^1.1.0",
     "express": "^4.17.3",
