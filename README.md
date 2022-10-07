@@ -11,4 +11,5 @@ PSQL_URI=<psql uri>
 
 S3_ACCESSKEYID=<aws s3 access key id>
 S3_SECRETACCESSKEY=<aws s3 secret access key>
+S3_ENDPOINT=<s3 endpoint uri>
 ```
