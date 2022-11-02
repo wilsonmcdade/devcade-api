@@ -44,6 +44,14 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
         console.log(game_name);
         console.log(file);
 
+        // unzip file
+        // check zip contains 3 files: one dir, two files (icon.png/jpg and banner.png/jpg)
+        // get a hash of the game files (MD5)
+        // zip game files and upload each file to the s3 bucket individually
+        // vvvvvvv
+        // if all of these succeeded, record game (title, s3 uuid, author name, game files hash value)
+
+
         const query = 
                 "INSERT INTO " + 
                 "game(game_id, author_username, upload_date, game_name) " +
@@ -65,9 +73,8 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
                 }
 
                 // Success, so create game record in the database
-                const pool = db.createPool();
 
-                pool.connect((err, client, release) => {
+                db.pool.connect((err, client, release) => {
                     if (err) {
                         return console.error('Error acquiring client', err.stack);
                     }

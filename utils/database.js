@@ -2,7 +2,7 @@ const config = require('./config');
 const logger = require('../utils/logger');
 const pg = require('pg');
 
-const createPool = () => new pg.Pool({
+const pool = new pg.Pool({
     host: config.PSQL_URI,
     user: config.PSQL_USER,
     port: config.PSQL_PORT,
@@ -10,6 +10,26 @@ const createPool = () => new pg.Pool({
     database: config.PSQL_USER,
     ssl: true
 });
+
+async function query(q) {
+    const client = await pool.connect();
+    let res;
+    try {
+        await client.query('BEGIN');
+        try {
+            res = await client.query(q);
+            await client.query('COMMIT');
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        }
+    } finally {
+        client.release();
+    }
+    return res;
+}
+
+
 
 const openConnection = async (callback) => {
     const client = new pg.Client({
@@ -40,5 +60,6 @@ const openConnection = async (callback) => {
 };
 
 module.exports = {
-    createPool
+    pool,
+    query
 };
