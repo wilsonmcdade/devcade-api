@@ -3,6 +3,7 @@ const config = require('../utils/config');
 const logger = require('../utils/logger');
 const db = require('../utils/database');
 const gamesRouter = require('express').Router();
+const { PythonShell } = require('python-shell');
 
 // utilities
 const multer = require('multer');
@@ -32,36 +33,67 @@ const upload = multer({
 
 gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
     if (req.fileValidationError) {
+        // Received an invalid file type (only accept zips)
         res.status(400).send("Only .zip files are allowed!");
     } else {
+        // The actual file
         const file = req.file;
+        // The name of the game
         const game_name = req.body.title;
 
         console.log(game_name);
         console.log(file);
 
-        var queryFailed = true;
-        db.openConnection(async (client) => {
-            const query = 
+        const query = 
                 "INSERT INTO " + 
                 "game(game_id, author_username, upload_date, game_name) " +
-                `VALUES ('${file.filename.split('.')[0]}', 'PLACEHOLDER_AUTHOR', CURRENT_DATE, '${game_name}');`;
-            console.log(query);
-            await client.query(query, (err, res) => {
+                `VALUES ('${file.filename.split('.')[0]}', 'PLACEHOLDER_AUTHOR', NOW(), '${game_name}');`;
+            //console.log(query);
+
+
+            // Attempt to upload game to the s3 bucket
+            const options = {
+                mode: 'text',
+                pythonOptions: ['-u'],
+                scriptPath: 'pythonScripts',
+                args: [file.filename.split('.')[0]]
+            };
+            
+            PythonShell.run('boto.py', options, (err, result) => {
                 if (err) {
-                    queryFailed = true;
-                    console.log(err.stack);
-                } else {
-                    console.log("Success");
+                    throw err;
                 }
-            });
-        });
+
+                // Success, so create game record in the database
+                const pool = db.createPool();
+
+                pool.connect((err, client, release) => {
+                    if (err) {
+                        return console.error('Error acquiring client', err.stack);
+                    }
     
-        if (queryFailed) {
-            res.status(500).send("Upload game failed! Try again later.");
-        } else {
-            res.sendStatus(200);
-        }
+                    client.query(query, (err, result) => {
+                        release();
+                        if (err) {
+                            return console.error('Error executing query', err.stack);
+                        }
+                    });
+                });
+
+                for (var r in result) {
+                    console.log(result[r]);
+                }
+                //console.log('result: ', result.toString());
+            });
+
+
+            
+    
+        // if (queryFailed) {
+        //     res.status(500).send("Upload game failed! Try again later.");
+        // } else {
+        //     res.sendStatus(200);
+        // }
     }
 });
 

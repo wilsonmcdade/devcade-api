@@ -5,7 +5,7 @@ const FormData = require('form-data');
 const upload = async () => {
     try {
         const file = fs.createReadStream('./zip.zip');
-        const title = 'Zip';
+        const title = 'GameName';
 
         const form = new FormData();
         form.append('title', title);
@@ -25,4 +25,6 @@ const upload = async () => {
     }
 }
 
-upload().then(resp => console.log(resp));
+upload()
+    .then(resp => console.log(resp))
+    .catch(err => console.log(err));
