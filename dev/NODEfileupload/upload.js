@@ -18,6 +18,7 @@ const upload = async () => {
         })
 
         if (resp.status === 200) {
+            console.log("upload complete");
             return 'Upload complete';        
         }
     } catch (err) {
@@ -61,9 +62,6 @@ const fct = async () => {
             splitKey[1] !== 'jpeg';
     });
 
-    console.log("INVALID MEDIA:");
-    console.log(invalidMedia);
-
     // create the file to place items in
     //fs.mkdirSync('d8eb59e2-a9fc-49f8-9fc9-c6897095154b');
 
@@ -77,4 +75,5 @@ const fct = async () => {
 // }
 }
 
-fct();
+//fct();
+upload();

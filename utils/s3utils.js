@@ -1,23 +1,25 @@
 const jszip = require('jszip');
 const fs = require('fs');
-const md5File = require('md5-file')
 const archiver = require('archiver');
+const { hashElement } = require('folder-hash');
+const { PythonShell } = require('python-shell');
+const db = require('../utils/database');
 
 /**
  * Assumes file being unzip is stored in ~/uploads and
  * unzips file to its respective directory in ~/uploads
  * 
  * Returns:
- *  - true if unzipping was successful
+ *  - name of game directory if validation/unzipping was successful
  *  - false if validation failed or unzipping was unsuccessful
  */
 const unzipFile = async (file_uuid) => {
-    const fileContent = fs.readFileSync(`../uploads/${file_uuid}.zip`);
+    const fileContent = fs.readFileSync(`uploads/${file_uuid}.zip`);
     const jszipInstance = new jszip();
     const result = await jszipInstance.loadAsync(fileContent);
 
-    const gameFilesDirName = verifyZipContent(result);        
-    if (!gameFilesDirName) {
+    const validZipContentFiles = verifyZipContent(result);        
+    if (!validZipContentFiles) {
         // zip file may have been missing content
         return false;
     }
@@ -25,20 +27,20 @@ const unzipFile = async (file_uuid) => {
     const keys = Object.keys(result.files);
 
     try {
-        if (fs.existsSync(`../uploads/${file_uuid}`)) {
+        if (fs.existsSync(`uploads/${file_uuid}`)) {
             // File has already been unzipped
             return false;
         }
         // create the file to place items in
-        fs.mkdirSync(`../uploads/${file_uuid}`);
+        fs.mkdirSync(`uploads/${file_uuid}`);
     
         // create files and put them into the directory
         for (let key of keys) {
             const item = result.files[key];
             if (item.dir) {
-                fs.mkdirSync(`../uploads/${file_uuid}/${item.name}`);
+                fs.mkdirSync(`uploads/${file_uuid}/${item.name}`);
             } else {
-                fs.writeFileSync(`../uploads/${file_uuid}/${item.name}`, Buffer.from(await item.async('arraybuffer')));
+                fs.writeFileSync(`uploads/${file_uuid}/${item.name}`, Buffer.from(await item.async('arraybuffer')));
             }
         }
     } catch {
@@ -46,8 +48,8 @@ const unzipFile = async (file_uuid) => {
         return false;
     }
 
-    // return game dir name
-    return gameFilesDirName;
+    // return validated files
+    return validZipContentFiles;
 }
 
 /**
@@ -61,7 +63,7 @@ const unzipFile = async (file_uuid) => {
  *  - true if soft validation succeeded
  *  - false if soft validation failed
  */
-const veryifyZipContent = async (zipContent) => {
+const verifyZipContent = async (zipContent) => {
     // get file keys
     const keys = Object.keys(zipContent.files).filter(key => {
         const keyNameArr = key.split('/');
@@ -101,13 +103,17 @@ const veryifyZipContent = async (zipContent) => {
             splitKey[1] !== 'jpeg';
     });
 
-    if (!invalidMedia) {
+    if (invalidMedia) {
         // some file aside from the required files exists
         return false;
     }
 
     // return the name of the game directory
-    return keys.find(key => zipContent.files[key].dir);
+    return {
+        gameDir: keys.find(key => zipContent.files[key].dir),
+        iconFilename: media.find(key => key.split('.')[0] === 'icon'),
+        bannerFilename: media.find(key => key.split('.')[0] === 'banner')
+    };
 }
 
 /**
@@ -116,9 +122,19 @@ const veryifyZipContent = async (zipContent) => {
  * 
  * Returns:
  *  - MD5 hash
+ *  - false if hashing failed
  */
 const hashGameFiles = async (file_uuid, gameDirName) => {
-    return await md5File(`../uploads/${file_uuid}/${gameDirName}`);
+    // TODO: remove '*' -- this is here for testing purposes
+    const options = {
+        files: { include: ['*', '*.cs', '*.json'] }
+    }
+
+    try {
+        return await hashElement(`uploads/${file_uuid}/${gameDirName}`, options);
+    } catch {
+        return false;
+    }
 }
 
 /**
@@ -126,23 +142,61 @@ const hashGameFiles = async (file_uuid, gameDirName) => {
  * this zip, along with the banner and icon files
  * 
  * Returns:
- *  - true if succeeded
+ *  - game file hash if successful
  *  - false if an issue occurred
  */
-const zipGameFilesAndUpload = async (file_uuid, gameDirName) => {
+const zipGameFilesAndUpload = async (file_uuid, zipContentFiles) => {
     try {
-        // zip files
-        zipDirectory(
-            `../uploads/${file_uuid}`, 
-            `../uploads/${file_uuid}/${file_uuid}.zip`
-        );
+        // hash game files
+        const gameFileHash = await hashGameFiles(file_uuid, zipContentFiles.gameDir);
+        if (!gameFileHash) {
+            // failed to hash game file
+            return false;
+        }
         
+        // zip game files
+        await zipDirectory(
+            `uploads/${file_uuid}/${zipContentFiles.gameDir}`, 
+            `uploads/${file_uuid}/${file_uuid}.zip`
+        );
+
+        // get proper files for uploading to s3
+        const s3UploadFiles = [
+            file_uuid, 
+            ...Object.values(zipContentFiles)
+                .filter(fname => fname !== zipContentFiles.gameDir)
+            ];
+
+        s3UploadFiles.forEach(item => console.log(item));
+
+        // Attempt to upload game to the s3 bucket
+        const options = {
+            mode: 'text',
+            pythonOptions: ['-u'],
+            scriptPath: 'pythonScripts',
+            args: s3UploadFiles
+        };
         // upload files to s3 bucket via PythonShell
-    } catch {
+        const pyPromise = new Promise((resolve, reject) => {
+            PythonShell.run('boto.py', options, (err, result) => {
+                if (err) {
+                    reject(err)
+                    //throw err;
+                }
+                resolve(result);
+                //console.log(result);
+            });
+        });
+
+        const pyResult = await pyPromise;
+        if (pyResult.length === 0 || pyResult[0] !== 'success') {
+            throw pyResult;
+        }
+        return gameFileHash
+    } catch(err) {
+        console.log(err);
         return false;
     }
-
-    return true;
 }
 
 /**
@@ -163,12 +217,43 @@ const zipDirectory = (sourceDir, outPath) => {
         stream.on('close', () => resolve());
         archive.finalize();
     });
+}
 
+/**
+ * delete local files associated with the game
+ * @param {String} file_uuid 
+ * @returns 
+ */
+const deleteLocalFiles = (file_uuid) => {
+    try {
+        if (fs.existsSync(`uploads/${file_uuid}.zip`)) {
+            fs.rmSync(`uploads/${file_uuid}.zip`);
+            console.log(`deleted: uploads/${file_uuid}.zip`);
+        }
+        if (fs.existsSync(`uploads/${file_uuid}/${file_uuid}.zip`)) {
+            fs.rmSync(`uploads/${file_uuid}/${file_uuid}.zip`);
+            console.log(`deleted: uploads/${file_uuid}/${file_uuid}.zip`);
+        }
+        if (fs.existsSync(`uploads/${file_uuid}`)) {
+            fs.rmSync(`uploads/${file_uuid}`, { recursive: true, force: true });
+            console.log(`deleted: uploads/${file_uuid} content`);
+        }
+        // if (fs.existsSync(`uploads/${file_uuid}`)) {
+        //     console.log("exists");
+        //     console.log(fs.readdirSync(`uploads/${file_uuid}`));
+        //     fs.rmdirSync(`uploads/${file_uuid}`, { force: true });
+        //     console.log(`deleted: uploads/${file_uuid} directory`);
+        // }
+        return true;
+    } catch (err) {
+        console.log(err);
+        return false;
+    }
 }
 
 module.exports = {
     unzipFile,
-    veryifyZipContent,
     hashGameFiles,
-    zipGameFilesAndUpload
+    zipGameFilesAndUpload,
+    deleteLocalFiles
 };

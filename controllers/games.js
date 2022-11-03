@@ -2,12 +2,13 @@ const os = require('os');
 const config = require('../utils/config');
 const logger = require('../utils/logger');
 const db = require('../utils/database');
+const s3utils = require('../utils/s3utils');
 const gamesRouter = require('express').Router();
-const { PythonShell } = require('python-shell');
 
 // utilities
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
+const { fstat } = require('fs');
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -44,63 +45,64 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
         console.log(game_name);
         console.log(file);
 
+        const file_uuid = file.filename.split('.')[0];
+
         // unzip file
         // check zip contains 3 files: one dir, two files (icon.png/jpg and banner.png/jpg)
-        // get a hash of the game files (MD5)
-        // zip game files and upload each file to the s3 bucket individually
-        // vvvvvvv
-        // if all of these succeeded, record game (title, s3 uuid, author name, game files hash value)
+        const zipContent = await s3utils.unzipFile(file_uuid)
+        
 
+        if (!zipContent) {
+            // failed to unzip or verify zip file content
+            return res.status(500).send("Upload game failed! Try again later.");
+        }
+
+        // hash and zip game files, then upload each file to the s3 bucket individually
+        const gameFileHash = await s3utils.zipGameFilesAndUpload(file_uuid, zipContent);
+
+        console.log(`uploadStatus: ${(gameFileHash ? 'success' : 'failed')}`);
+
+        if (!gameFileHash) {
+            // failed to hash, zip or upload game files to s3 bucket
+            return res.status(500).send("Upload game failed! Try again later.");
+        }
+        
+        // if all of this succeeded, record game (title, s3 uuid, author name, game files hash value)
+
+        // delete all files related to the game from the server since they are stored in s3
 
         const query = 
-                "INSERT INTO " + 
-                "game(game_id, author_username, upload_date, game_name) " +
-                `VALUES ('${file.filename.split('.')[0]}', 'PLACEHOLDER_AUTHOR', NOW(), '${game_name}');`;
-            //console.log(query);
+            "INSERT INTO " + 
+            "game(game_id, author_username, upload_date, game_name, hash) " +
+            `VALUES ('${file.filename.split('.')[0]}', 'PLACEHOLDER_AUTHOR', NOW(), '${game_name}', '${gameFileHash.hash}');`;
+        console.log(query);
 
-
-            // Attempt to upload game to the s3 bucket
-            const options = {
-                mode: 'text',
-                pythonOptions: ['-u'],
-                scriptPath: 'pythonScripts',
-                args: [file.filename.split('.')[0]]
-            };
-            
-            PythonShell.run('boto.py', options, (err, result) => {
+        // Success, so create game record in the database
+        try {
+            db.pool.connect((err, client, release) => {
                 if (err) {
-                    throw err;
+                    console.error('Error acquiring client', err.stack);
                 }
 
-                // Success, so create game record in the database
-
-                db.pool.connect((err, client, release) => {
+                client.query(query, (err, result) => {
+                    release();
                     if (err) {
-                        return console.error('Error acquiring client', err.stack);
+                        console.error('Error executing query', err.stack);
                     }
-    
-                    client.query(query, (err, result) => {
-                        release();
-                        if (err) {
-                            return console.error('Error executing query', err.stack);
-                        }
-                    });
                 });
-
-                for (var r in result) {
-                    console.log(result[r]);
-                }
-                //console.log('result: ', result.toString());
             });
+        } catch (err) {
+            return res.status(500).send("Upload game failed! Try again later.");
+        }
 
+        // delete local game files
+        // use delRes later to handle local files not getting deleted
+        const delRes = await s3utils.deleteLocalFiles(file_uuid);
 
-            
-    
-        // if (queryFailed) {
-        //     res.status(500).send("Upload game failed! Try again later.");
-        // } else {
-        //     res.sendStatus(200);
-        // }
+        console.log(`files deleted?: ${delRes}`);
+
+        // game file successfully uploaded
+        return res.sendStatus(200);
     }
 });
 
