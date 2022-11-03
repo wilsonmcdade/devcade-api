@@ -54,6 +54,7 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
 
         if (!zipContent) {
             // failed to unzip or verify zip file content
+            s3utils.deleteLocalFiles(file_uuid);
             return res.status(500).send("Upload game failed! Try again later.");
         }
 
@@ -64,13 +65,11 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
 
         if (!gameFileHash) {
             // failed to hash, zip or upload game files to s3 bucket
+            s3utils.deleteLocalFiles(file_uuid);
             return res.status(500).send("Upload game failed! Try again later.");
         }
         
-        // if all of this succeeded, record game (title, s3 uuid, author name, game files hash value)
-
-        // delete all files related to the game from the server since they are stored in s3
-
+        // if all of this succeeded, record game (title, s3 uuid, author name, game files hash value)        
         const query = 
             "INSERT INTO " + 
             "game(game_id, author_username, upload_date, game_name, hash) " +
@@ -92,20 +91,17 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
                 });
             });
         } catch (err) {
+            s3utils.deleteLocalFiles(file_uuid);
             return res.status(500).send("Upload game failed! Try again later.");
         }
 
-        // delete local game files
-        // use delRes later to handle local files not getting deleted
-        const delRes = await s3utils.deleteLocalFiles(file_uuid);
-
-        console.log(`files deleted?: ${delRes}`);
+        // delete all files related to the game from the server since they are stored in s3
+        const delRes = s3utils.deleteLocalFiles(file_uuid);
 
         // game file successfully uploaded
         return res.sendStatus(200);
     }
 });
-
 
 /**************** GET ROUTES ****************/
 

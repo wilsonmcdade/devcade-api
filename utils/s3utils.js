@@ -1,5 +1,6 @@
 const jszip = require('jszip');
 const fs = require('fs');
+const path = require('path');
 const archiver = require('archiver');
 const { hashElement } = require('folder-hash');
 const { PythonShell } = require('python-shell');
@@ -220,30 +221,41 @@ const zipDirectory = (sourceDir, outPath) => {
 }
 
 /**
+ * Pauses current thread for time ms
+ * @param {int} time in ms 
+ * @returns 
+ */
+ const delay = (time) => {
+    return new Promise(resolve => {
+        setTimeout(resolve, time);
+    });
+}
+
+/**
  * delete local files associated with the game
  * @param {String} file_uuid 
  * @returns 
  */
-const deleteLocalFiles = (file_uuid) => {
+const deleteLocalFiles = async (file_uuid) => {
     try {
+        // attempt to delete uploaded zip since it isn't needed anymore
         if (fs.existsSync(`uploads/${file_uuid}.zip`)) {
-            fs.rmSync(`uploads/${file_uuid}.zip`);
+            fs.unlinkSync(`uploads/${file_uuid}.zip`);
             console.log(`deleted: uploads/${file_uuid}.zip`);
         }
-        if (fs.existsSync(`uploads/${file_uuid}/${file_uuid}.zip`)) {
-            fs.rmSync(`uploads/${file_uuid}/${file_uuid}.zip`);
-            console.log(`deleted: uploads/${file_uuid}/${file_uuid}.zip`);
-        }
+        // attempt to delete unzipped files since they aren't needed anymore 
         if (fs.existsSync(`uploads/${file_uuid}`)) {
-            fs.rmSync(`uploads/${file_uuid}`, { recursive: true, force: true });
-            console.log(`deleted: uploads/${file_uuid} content`);
-        }
-        // if (fs.existsSync(`uploads/${file_uuid}`)) {
-        //     console.log("exists");
-        //     console.log(fs.readdirSync(`uploads/${file_uuid}`));
-        //     fs.rmdirSync(`uploads/${file_uuid}`, { force: true });
-        //     console.log(`deleted: uploads/${file_uuid} directory`);
-        // }
+            await (async () => {
+                fs.rmdir(`uploads/${file_uuid}`, { recursive: true, force: true }, async (err) => {
+                    console.log("waiting for subdirectories to be deleted...")
+                    while (fs.readdirSync(`uploads/${file_uuid}`).length !== 0) {
+                        await delay(250);
+                    }
+                    fs.rmdirSync(`uploads/${file_uuid}`);
+                    console.log(`deleted: uploads/${file_uuid}`);
+                });
+            })();
+        }   
         return true;
     } catch (err) {
         console.log(err);
