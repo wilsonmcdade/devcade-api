@@ -8,7 +8,6 @@ const gamesRouter = require('express').Router();
 // utilities
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
-const { fstat } = require('fs');
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {

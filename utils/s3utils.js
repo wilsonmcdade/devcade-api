@@ -248,17 +248,25 @@ const deleteLocalFiles = async (file_uuid) => {
             await (async () => {
                 fs.rmdir(`uploads/${file_uuid}`, { recursive: true, force: true }, async (err) => {
                     console.log("waiting for subdirectories to be deleted...")
-                    while (fs.readdirSync(`uploads/${file_uuid}`).length !== 0) {
-                        await delay(250);
+                    
+                    if (fs.existsSync(`uploads/${file_uuid}`)) {
+                        while (fs.readdirSync(`uploads/${file_uuid}`).length !== 0) {
+                            await delay(250);
+                            if (!fs.existsSync(`uploads/${file_uuid}`)) {
+                                break;
+                            }
+                        }
                     }
-                    fs.rmdirSync(`uploads/${file_uuid}`);
+                    if (fs.existsSync(`uploads/${file_uuid}`)) {
+                        fs.rmdirSync(`uploads/${file_uuid}`);
+                    }
                     console.log(`deleted: uploads/${file_uuid}`);
                 });
             })();
         }   
         return true;
     } catch (err) {
-        console.log(err);
+        console.log(`Error occurred while deleting local files for: ${file_uuid}`);
         return false;
     }
 }
