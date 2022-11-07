@@ -16,7 +16,7 @@ def download_file(bucket, game_uuid):
     # Download the file
     s3 = boto3.resource('s3', endpoint_url=endpoint, aws_access_key_id=access_key, aws_secret_access_key=secret_key)
     
-    path = f'downloads/{game_uuid}'
+    path = f'downloads/{game_uuid}/medias'
 
     if (not os.path.exists(path)):
         os.makedirs(path)

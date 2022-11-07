@@ -1,4 +1,6 @@
 const os = require('os');
+const fs = require('fs');
+const path = require('path');
 const config = require('../utils/config');
 const logger = require('../utils/logger');
 const db = require('../utils/database');
@@ -9,6 +11,7 @@ const Game = require('../models/game');
 // utilities
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
+const { response } = require('express');
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -110,8 +113,59 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
 /**************** GET ROUTES ****************/
 
 gamesRouter.get('/download/:gameId', async (req, res) => {
-    const val = req.params.gameId;
-    
+    const gameId = req.params.gameId;
+    try {
+        if (!(await s3utils.downloadZip(gameId))) {
+            return res.status(500).send("Failed to fetch game zip from s3 bucket");
+        }
+
+        const zipPath = `downloads/${gameId}/${gameId}.zip`;
+        const destFile = path.basename(zipPath);
+        const stat = fs.statSync(zipPath);
+
+        res.writeHead(200, {
+            'Content-Type': 'application/zip',
+            'Content-Disposition': `attachment; filename=${destFile}`,
+            'Content-Length': stat.size,
+            "File-Name": path.basename(destFile)
+        });
+
+        var readStream = fs.createReadStream(zipPath);
+        return readStream.pipe(res);
+    } catch {
+        return res.status(500).send("Failed to download game zip");
+    } finally {
+        // delete all files related to the game from the server since they have been sent to the user
+        s3utils.deleteLocalFiles(gameId);
+    }
+});
+
+gamesRouter.get('/download/medias/:gameId', async (req, res) => {
+    const gameId = req.params.gameId;
+    try {
+        if (!(await s3utils.downloadAndZipMedias(gameId))) {
+            return res.status(500).send("Failed to fetch game medias from s3 bucket");
+        }
+
+        const zipPath = `downloads/${gameId}/medias.zip`;
+        const destFile = `${gameId}-${path.basename(zipPath)}`;
+        const stat = fs.statSync(zipPath);
+
+        res.writeHead(200, {
+            'Content-Type': 'application/zip',
+            'Content-Disposition': `attachment; filename=${path.basename(destFile)}`,
+            'Content-Length': stat.size,
+            "File-Name": path.basename(destFile)
+        });
+
+        var readStream = fs.createReadStream(zipPath);
+        return readStream.pipe(res);
+    } catch (e) {
+        return res.status(500).send("Failed to download game medias zip");
+    } finally {
+        // delete all files related to the game from the server since they have been sent to the user
+        s3utils.deleteLocalFiles(gameId);
+    }
 });
 
 gamesRouter.get('/gamelist/', async (req, res) => {
@@ -145,14 +199,6 @@ gamesRouter.get('/gamelist/ids', async (req, res) => {
     } catch (e) {
         return res.status(500).send("Failed to retrieve games ids list");
     }
-});
-
-gamesRouter.get('/game/icon', async (req, res) => {
-
-});
-
-gamesRouter.get('/game/banner', async (req, res) => {
-
 });
 
 module.exports = gamesRouter;

@@ -232,6 +232,84 @@ const zipDirectory = (sourceDir, outPath) => {
 }
 
 /**
+ * Downloads a game zip locally to ~/downloads
+ * @param {string} file_uuid 
+ * @returns true if success, false if failed
+ */
+const downloadZip = async (file_uuid) => {
+    try {
+        // Attempt to upload game to the s3 bucket
+        const options = {
+            mode: 'text',
+            pythonOptions: ['-u'],
+            scriptPath: 'pythonScripts',
+            args: file_uuid
+        };
+        // upload files to s3 bucket via PythonShell
+        const pyPromise = new Promise((resolve, reject) => {
+            PythonShell.run('download.py', options, (err, result) => {
+                if (err) {
+                    reject(err)
+                    //throw err;
+                }
+                resolve(result);
+                //console.log(result);
+            });
+        });
+
+        const pyResult = await pyPromise;
+        if (pyResult.length === 0 || pyResult[0] !== 'success') {
+            throw pyResult;
+        }
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Downloads the media files for a game locally to ~/downloads
+ * @param {string} file_uuid 
+ * @returns true if zip was successful, false otherwise
+ */
+const downloadAndZipMedias = async (file_uuid) => {
+    try {
+        // Attempt to upload game to the s3 bucket
+        const options = {
+            mode: 'text',
+            pythonOptions: ['-u'],
+            scriptPath: 'pythonScripts',
+            args: file_uuid
+        };
+        // upload files to s3 bucket via PythonShell
+        const pyPromise = new Promise((resolve, reject) => {
+            PythonShell.run('download_medias.py', options, (err, result) => {
+                if (err) {
+                    reject(err)
+                    //throw err;
+                }
+                resolve(result);
+                //console.log(result);
+            });
+        });
+
+        const pyResult = await pyPromise;
+        if (pyResult.length === 0 || pyResult[0] !== 'success') {
+            throw pyResult;
+        }
+        
+        // zip medias
+        await zipDirectory(
+            `downloads/${file_uuid}/medias`, 
+            `downloads/${file_uuid}/medias.zip`
+        );
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
  * delete local files associated with the game
  * @param {String} file_uuid 
  * @returns 
@@ -263,8 +341,28 @@ const deleteLocalFiles = async (file_uuid) => {
                     console.log(`deleted: uploads/${file_uuid}`);
                 });
             })();
-        }   
-        return true;
+        }
+        // attempt to delete download files
+        if (fs.existsSync(`downloads/${file_uuid}`)) {
+            await (async () => {
+                fs.rmdir(`downloads/${file_uuid}`, { recursive: true, force: true }, async (err) => {
+                    console.log("waiting for subdirectories to be deleted...")
+                    
+                    if (fs.existsSync(`downloads/${file_uuid}`)) {
+                        while (fs.readdirSync(`downloads/${file_uuid}`).length !== 0) {
+                            await delay(250);
+                            if (!fs.existsSync(`downloads/${file_uuid}`)) {
+                                break;
+                            }
+                        }
+                    }
+                    if (fs.existsSync(`downloads/${file_uuid}`)) {
+                        fs.rmdirSync(`downloads/${file_uuid}`);
+                    }
+                    console.log(`deleted: downloads/${file_uuid}`);
+                });
+            })();
+        }
     } catch (err) {
         console.log(`Error occurred while deleting local files for: ${file_uuid}`);
         return false;
@@ -275,5 +373,7 @@ module.exports = {
     unzipFile,
     hashGameFiles,
     zipGameFilesAndUpload,
-    deleteLocalFiles
+    deleteLocalFiles,
+    downloadZip,
+    downloadAndZipMedias
 };
