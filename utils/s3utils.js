@@ -179,7 +179,7 @@ const zipGameFilesAndUpload = async (file_uuid, zipContentFiles) => {
         };
         // upload files to s3 bucket via PythonShell
         const pyPromise = new Promise((resolve, reject) => {
-            PythonShell.run('boto.py', options, (err, result) => {
+            PythonShell.run('upload.py', options, (err, result) => {
                 if (err) {
                     reject(err)
                     //throw err;
