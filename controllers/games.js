@@ -4,6 +4,7 @@ const logger = require('../utils/logger');
 const db = require('../utils/database');
 const s3utils = require('../utils/s3utils');
 const gamesRouter = require('express').Router();
+const Game = require('../models/game');
 
 // utilities
 const multer = require('multer');
@@ -31,6 +32,10 @@ const upload = multer({
 
 /**************** POST ROUTES ****************/
 
+/**
+ * Attempts to upload a game to the s3 bucket and record its record in the
+ * devcade postgres DB
+ */
 gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
     if (req.fileValidationError) {
         // Received an invalid file type (only accept zips)
@@ -107,6 +112,47 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
 gamesRouter.get('/download/:gameId', async (req, res) => {
     const val = req.params.gameId;
     
+});
+
+gamesRouter.get('/gamelist/', async (req, res) => {
+    const query = `SELECT * FROM game`;
+    try {
+        const client = await db.pool.connect();
+        const games = await client.query(query);
+        await client.end();
+        
+        return res.status(200).send(games.rows.map(game => {
+            return new Game(
+                game["game_id"], 
+                game["author_username"],
+                game["upload_date"],
+                game["game_name"],
+                game["hash"]);
+        }));
+    } catch (e) {
+        return res.status(500).send("Failed to retrieve games list");
+    }
+});
+
+gamesRouter.get('/gamelist/ids', async (req, res) => {
+    const query = `SELECT game_id FROM game`;
+    try {
+        const client = await db.pool.connect();
+        const games = await client.query(query);
+        await client.end();
+        
+        return res.status(200).send(games.rows.map(game => game["game_id"]));
+    } catch (e) {
+        return res.status(500).send("Failed to retrieve games ids list");
+    }
+});
+
+gamesRouter.get('/game/icon', async (req, res) => {
+
+});
+
+gamesRouter.get('/game/banner', async (req, res) => {
+
 });
 
 module.exports = gamesRouter;

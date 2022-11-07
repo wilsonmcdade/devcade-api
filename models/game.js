@@ -1,9 +1,11 @@
 class Game {
-    constructor(id, authorUsername, s3StorageBucket, uploadDate) {
+    constructor(id, author, uploadDate, name, hash) {
         this.id = id;
-        this.authorUsername = authorUsername;
-        this.s3StorageBucket = s3StorageBucket;
+        this.author = author;
         this.uploadDate = uploadDate;
+        this.name = name;
+        this.hash = hash;
     }
 }
 
+module.exports = Game;
