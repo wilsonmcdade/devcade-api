@@ -18,6 +18,9 @@ RUN npm install
 # Change cache settings
 RUN mkdir ./my_cache; npm config set cache ./my_cache --global; npm --global cache verify
 
+# Create downloads directory
+RUN mkdir ./downloads
+
 # Copy the rest of the app
 COPY . .
 
