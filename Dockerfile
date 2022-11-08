@@ -20,10 +20,12 @@ COPY . .
 
 # Permissions
 RUN chmod -R 775 .
+RUN chown -R node: .
 
 # FIXME: Possibly redundant instructions
 #RUN bash setup.sh
 
 # Entrypoint
+USER node
 EXPOSE 8080
 CMD ["npm", "start"]
