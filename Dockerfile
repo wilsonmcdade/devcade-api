@@ -18,6 +18,9 @@ RUN npm install
 # Copy the rest of the app
 COPY . .
 
+# Permissions
+RUN chmod -R 775 .
+
 # FIXME: Possibly redundant instructions
 #RUN bash setup.sh
 
