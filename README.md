@@ -17,3 +17,15 @@ S3_ENDPOINT=<s3 endpoint uri>
 S3_GAMES_BUCKET="devcade-games"
 S3_SAVES_BUCKET="devcade-saves"
 ```
+
+# Podman
+
+First, build the container.
+```
+podman build . --tag devcade-api
+```
+
+You can run the container on your local machine with
+```
+podman run --rm -it --name devcade-api -p 8277:8277 --env-file=.env devcade-api
+```
