@@ -15,6 +15,9 @@ RUN pip install -r requirements.txt
 COPY package*.json ./
 RUN npm install
 
+# Change cache settings
+RUN mkdir ./my_cache; npm config set cache ./my_cache --global; npm --global cache verify
+
 # Copy the rest of the app
 COPY . .
 
