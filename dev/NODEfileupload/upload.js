@@ -11,7 +11,7 @@ const upload = async () => {
         form.append('title', title);
         form.append('file', file);
 
-        const resp = await axios.post('http://localhost:3000/api/games/upload', form, {
+        const resp = await axios.post('http://localhost:3002/api/games/upload', form, {
             headers: {
                 ...form.getHeaders(),
             }

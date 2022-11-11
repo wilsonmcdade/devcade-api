@@ -3,8 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
 const { hashElement } = require('folder-hash');
-const { PythonShell } = require('python-shell');
-const db = require('../utils/database');
+const devcadeS3 = require('./devcadeS3Actions');
 
 /**
  * Assumes file being unzip is stored in ~/uploads and
@@ -163,35 +162,26 @@ const zipGameFilesAndUpload = async (file_uuid, zipContentFiles) => {
 
         // get proper files for uploading to s3
         const s3UploadFiles = [
-            file_uuid, 
+            `${file_uuid}.zip`, 
             ...Object.values(zipContentFiles)
                 .filter(fname => fname !== zipContentFiles.gameDir)
             ];
 
         s3UploadFiles.forEach(item => console.log(item));
 
-        // Attempt to upload game to the s3 bucket
-        const options = {
-            mode: 'text',
-            pythonOptions: ['-u'],
-            scriptPath: 'pythonScripts',
-            args: s3UploadFiles
-        };
-        // upload files to s3 bucket via PythonShell
-        const pyPromise = new Promise((resolve, reject) => {
-            PythonShell.run('upload.py', options, (err, result) => {
-                if (err) {
-                    reject(err)
-                    //throw err;
-                }
-                resolve(result);
-                //console.log(result);
-            });
+        // upload files to s3 bucket
+        const s3Promise = new Promise((resolve, reject) => {
+            try {
+                s3UploadFiles.forEach(file => devcadeS3.uploadGameFile(file_uuid, file));
+                resolve('success');
+            } catch (err) {
+                reject(err);
+            }
         });
 
-        const pyResult = await pyPromise;
-        if (pyResult.length === 0 || pyResult[0] !== 'success') {
-            throw pyResult;
+        const s3Res = await s3Promise;
+        if (s3Res !== 'success') {
+            throw s3Res;
         }
         return gameFileHash
     } catch(err) {
@@ -245,21 +235,27 @@ const downloadZip = async (file_uuid) => {
             scriptPath: 'pythonScripts',
             args: file_uuid
         };
-        // upload files to s3 bucket via PythonShell
-        const pyPromise = new Promise((resolve, reject) => {
-            PythonShell.run('download.py', options, (err, result) => {
-                if (err) {
-                    reject(err)
-                    //throw err;
-                }
-                resolve(result);
-                //console.log(result);
-            });
+
+
+        // download game zip from s3 bucket
+        const s3Promise = new Promise((resolve, reject) => {
+            try {
+                devcadeS3.downloadGame(file_uuid);
+                resolve('success');
+            } catch (err) {
+                reject(err);
+            }
         });
 
-        const pyResult = await pyPromise;
-        if (pyResult.length === 0 || pyResult[0] !== 'success') {
-            throw pyResult;
+        const s3Res = await s3Promise;
+        if (s3Res !== 'success') {
+            throw s3Res;
+        }
+
+        console.log(`downloads/${file_uuid}/${file_uuid}.zip`);
+        while (!fs.existsSync(`downloads/${file_uuid}/${file_uuid}.zip`)) {
+            await delay(250);
+            console.log("still waiting");
         }
         return true;
     } catch {
@@ -281,21 +277,32 @@ const downloadAndZipMedias = async (file_uuid) => {
             scriptPath: 'pythonScripts',
             args: file_uuid
         };
-        // upload files to s3 bucket via PythonShell
-        const pyPromise = new Promise((resolve, reject) => {
-            PythonShell.run('download_medias.py', options, (err, result) => {
-                if (err) {
-                    reject(err)
-                    //throw err;
-                }
-                resolve(result);
-                //console.log(result);
-            });
+        
+        // download game icon and banner from s3 bucket
+        const s3Promise = new Promise((resolve, reject) => {
+            try {
+                devcadeS3.downloadMedias(file_uuid);
+                resolve('success');
+            } catch (err) {
+                reject(err);
+            }
         });
 
-        const pyResult = await pyPromise;
-        if (pyResult.length === 0 || pyResult[0] !== 'success') {
-            throw pyResult;
+        const s3Res = await s3Promise;
+        console.log(`S3RES: ${s3Res}`);
+        if (s3Res !== 'success') {
+            throw s3Res;
+        }
+
+        var mediasBasenames = (await devcadeS3.getGamesBucketObjects(file_uuid))
+            .filter(key => !key.name.includes(`${file_uuid}.zip`)).map(key => path.basename(key.name));
+
+        console.log(mediasBasenames);
+        
+        // wait for icon and banner to be downloaded
+        while (!fs.existsSync(`downloads/${file_uuid}/medias/${mediasBasenames[0]}`) &&
+            !fs.existsSync(`downloads/${file_uuid}/medias/${mediasBasenames[1]}`)) {
+            await delay(250);
         }
         
         // zip medias
@@ -304,7 +311,8 @@ const downloadAndZipMedias = async (file_uuid) => {
             `downloads/${file_uuid}/medias.zip`
         );
         return true;
-    } catch {
+    } catch (err) {
+        console.log(err);
         return false;
     }
 }

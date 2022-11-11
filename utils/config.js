@@ -1,4 +1,5 @@
-require('dotenv').config({path: "../.env"});
+require('dotenv').config({path: ".env"});
+require('dotenv').config({path: "../.env"}); // REMOVE THIS AFTER TESTING
 
 const API_PORT = process.env.API_PORT;
 
