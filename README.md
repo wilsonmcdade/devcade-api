@@ -120,37 +120,35 @@ podman run --rm -it --name devcade-api -p 8277:8277 --env-file=.env devcade-api
 # API POST Routes
 
 ## Uploading A Game
-	- Route: `api/games/upload`
+- Route: `api/games/upload`	
+- Takes a game zip and uploads it to the database
 	
-	- Takes a game zip and uploads it to the database
-	
-	```javascript
-	/// Sample Usage in JavaScript using Axios
-	
-	const fs = require('fs');
-	const axios = require('axios');
-	const FormData = require('form-data');
-	
-	const upload = async () => {
-		try {
-			const file = fs.createReadStream('./zip.zip');
-			const title = 'GameName';
+```javascript
+/// Sample Usage in JavaScript using Axios
 
-			const form = new FormData();
-			form.append('title', title);
-			form.append('file', file);
+const fs = require('fs');
+const axios = require('axios');
+const FormData = require('form-data');
+
+const upload = async () => {
+	try {
+		const file = fs.createReadStream('./zip.zip');
+		const title = 'GameName';
+
+		const form = new FormData();
+		form.append('title', title);
+		form.append('file', file);
 
 			const response = await axios.post('<api_url>:<port>/api/games/upload', form, {
-				headers: {
-					...form.getHeaders(),
-				}
-			})
-
-			if (response.status === 200) {
-				return 'Upload complete';        
+			headers: {
+				...form.getHeaders(),
 			}
-		} catch (err) {
-			throw err;
+		})
+			if (response.status === 200) {
+			return 'Upload complete';        
 		}
+	} catch (err) {
+		throw err;
 	}
-	```
+}
+```
