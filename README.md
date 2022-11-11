@@ -33,9 +33,9 @@ podman run --rm -it --name devcade-api -p 8277:8277 --env-file=.env devcade-api
 # API GET Routes
 
 ## Downloading A Game
-	* Route: `api/games/download/<existingGameId>`
-	* Downloads a game zip containing a single game directory
-	```
+	- Route: `api/games/download/<existingGameId>`
+	- Downloads a game zip containing a single game directory
+	```javascript
 	/// Sample Usage in JavaScript using Axios
 	
 	const axios = require('axios');
@@ -49,9 +49,9 @@ podman run --rm -it --name devcade-api -p 8277:8277 --env-file=.env devcade-api
 	```
 
 ## Downloading A Game's Icon and Banner
-	* Route: `api/games/download/medias/<existingGameId>`
-	* Downloads a zip containing the banner and icon images for a game
-	```
+	- Route: `api/games/download/medias/<existingGameId>`
+	- Downloads a zip containing the banner and icon images for a game
+	```javascript
 	/// Sample Usage in JavaScript using Axios
 	
 	const axios = require('axios');
@@ -67,9 +67,9 @@ podman run --rm -it --name devcade-api -p 8277:8277 --env-file=.env devcade-api
 ## Get Available Games List
 
 ### Getting Game Objects
-	* Route: `api/games/gamelist`
-	* Returns a JSON list containing the following object:
-	```
+	- Route: `api/games/gamelist`
+	- Returns a JSON list containing the following object:
+	```javascript
 	{
 		"id": "<game uuid>",
 		"author": "<CSH username of author>",
@@ -78,7 +78,7 @@ podman run --rm -it --name devcade-api -p 8277:8277 --env-file=.env devcade-api
 		"hash": "<hash value of game files used for game versioning>"
 	}
 	```
-	* This list can be deserialized using the Newtonsoft.Json nuget library in C#/.NET
+	- This list can be deserialized using the Newtonsoft.Json nuget library in C#/.NET
 	```
 	/// Sample Usage in JavaScript using Axios
 	
@@ -93,9 +93,9 @@ podman run --rm -it --name devcade-api -p 8277:8277 --env-file=.env devcade-api
 	```
 
 ### Listing Game Ids
-	* Route: `api/games/gamelist/ids`
-	* Returns a JSON list containing game uuid strings
-	```
+	- Route: `api/games/gamelist/ids`
+	- Returns a JSON list containing game uuid strings
+	```javascript
 	/// Sample Usage in JavaScript using Axios
 	
 	const axios = require('axios');
@@ -111,9 +111,9 @@ podman run --rm -it --name devcade-api -p 8277:8277 --env-file=.env devcade-api
 # API POST Routes
 
 ## Uploading A Game
-	* Route: `api/games/upload`
-	* Takes a game zip and uploads it to the database
-	```
+	- Route: `api/games/upload`
+	- Takes a game zip and uploads it to the database
+	```javascript
 	/// Sample Usage in JavaScript using Axios
 	
 	const fs = require('fs');
