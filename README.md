@@ -136,10 +136,10 @@ const upload = async () => {
 		form.append('title', title);
 		form.append('file', file);
 
-			const response = await axios.post('<api_url>:<port>/api/games/upload', form, {
-			headers: {
-				...form.getHeaders(),
-			}
+			const response = await axios.post(
+				'<api_url>:<port>/api/games/upload', 
+				form, 
+				{ headers: { ...form.getHeaders(), }
 		})
 			if (response.status === 200) {
 			return 'Upload complete';        
