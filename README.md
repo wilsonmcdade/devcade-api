@@ -33,89 +33,86 @@ podman run --rm -it --name devcade-api -p 8277:8277 --env-file=.env devcade-api
 # API GET Routes
 
 ## Downloading A Game
-	- Route: `api/games/download/<existingGameId>`
+- Route: `api/games/download/<existingGameId>`	
+- Downloads a game zip containing a single game directory
 	
-	- Downloads a game zip containing a single game directory
+```javascript
+/// Sample Usage in JavaScript using Axios
 	
-	```javascript
-	/// Sample Usage in JavaScript using Axios
+const axios = require('axios');
 	
-	const axios = require('axios');
-	
-	axios.get(`<api_url>:<port>/api/games/download/${<existingGameId>}`)
-		.then(res => {
-			// response logic
-		}).catch(err => {
-			console.log(err);
-		});
-	```
+axios.get(`<api_url>:<port>/api/games/download/${<existingGameId>}`)
+	.then(res => {
+		// response logic
+	}).catch(err => {
+		console.log(err);
+	});
+```
 
 ## Downloading A Game's Icon and Banner
-	- Route: `api/games/download/medias/<existingGameId>`
-	- Downloads a zip containing the banner and icon images for a game
+- Route: `api/games/download/medias/<existingGameId>`
+- Downloads a zip containing the banner and icon images for a game
 	
-	```javascript
-	/// Sample Usage in JavaScript using Axios
+```javascript
+/// Sample Usage in JavaScript using Axios
 	
-	const axios = require('axios');
+const axios = require('axios');
 	
-	axios.get(`<api_url>:<port>/api/games/download/medias/${<existingGameId>}`)
-		.then(res => {
-			// response logic
-		}).catch(err => {
-			console.log(err);
-		});
-	```
+axios.get(`<api_url>:<port>/api/games/download/medias/${<existingGameId>}`)
+	.then(res => {
+		// response logic
+	}).catch(err => {
+		console.log(err);
+	});
+```
 
 ## Get Available Games List
 
 ### Getting Game Objects
-	- Route: `api/games/gamelist`
+- Route: `api/games/gamelist`	
+- Returns a JSON list containing the following object:
 	
-	- Returns a JSON list containing the following object:
+```javascript
+{
+	"id": "<game uuid>",
+	"author": "<CSH username of author>",
+	"uploadDate": "<date string of upload date>",
+	"name": "<game title>",
+	"hash": "<hash value of game files used for game versioning>"
+}
+```
 	
-	```javascript
-	{
-		"id": "<game uuid>",
-		"author": "<CSH username of author>",
-		"uploadDate": "<date string of upload date>",
-		"name": "<game title>",
-		"hash": "<hash value of game files used for game versioning>"
-	}
-	```
+- This list can be deserialized using the Newtonsoft.Json nuget library in C#/.NET	
+
+```
+/// Sample Usage in JavaScript using Axios
 	
-	- This list can be deserialized using the Newtonsoft.Json nuget library in C#/.NET
+const axios = require('axios');
 	
-	```
-	/// Sample Usage in JavaScript using Axios
-	
-	const axios = require('axios');
-	
-	axios.get('<api_url>:<port>/api/games/gamelist')
-		.then(res => {
-			// response logic
-		}).catch(err => {
-			console.log(err);
-		});
-	```
+axios.get('<api_url>:<port>/api/games/gamelist')
+	.then(res => {
+		// response logic
+	}).catch(err => {
+		console.log(err);
+	});
+```
 
 ### Listing Game Ids
-	- Route: `api/games/gamelist/ids`
+- Route: `api/games/gamelist/ids`
+- Returns a JSON list containing game uuid strings
 	
-	- Returns a JSON list containing game uuid strings
+```javascript
+/// Sample Usage in JavaScript using Axios
 	
-	```javascript
-	/// Sample Usage in JavaScript using Axios
+const axios = require('axios');
 	
-	const axios = require('axios');
-	
-	axios.get('<api_url>:<port>/api/games/gamelist/ids')
-		.then(res => {
-			// response logic
-		}).catch(err => {
-			console.log(err);
-		});
-	```
+axios.get('<api_url>:<port>/api/games/gamelist/ids')
+	.then(res => {
+		// response logic
+	}).catch(err => {
+		console.log(err);
+	});
+```
 
 # API POST Routes
 
