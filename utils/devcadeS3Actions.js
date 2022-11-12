@@ -74,8 +74,10 @@ const downloadGame = async (gameId) => {
                     }
                     console.log(`Downloaded ${key}`);
                 });
+        return true;
     } catch (e) {
         console.log('Error:', e);
+        return false;
     }
 };
 
@@ -105,8 +107,10 @@ const downloadMedia = async (gameId, mediaType) => {
                     }
                     console.log(`Downloaded ${key}`);
                 });
+        return true;
     } catch (e) {
         console.log('Error:', e);
+        return false;
     }
 };
 
@@ -195,8 +199,10 @@ const downloadMedias = async (gameId) => {
                     console.log(`Downloaded ${key}`);
                 });
         });
+        return true;
     } catch (e) {
         console.log('Error:', e);
+        return false;
     }
 };
 

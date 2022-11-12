@@ -194,8 +194,18 @@ const zipGameFilesAndUpload = async (file_uuid, zipContentFiles) => {
         // upload files to s3 bucket
         const s3Promise = new Promise((resolve, reject) => {
             try {
-                s3UploadFiles.forEach(async file => await devcadeS3.uploadGameFile(file_uuid, file));
-                resolve('success');
+                var failed = false;
+                s3UploadFiles.forEach(async file => {
+                    const res = await devcadeS3.uploadGameFile(file_uuid, file);
+                    if (!res) {
+                        failed = true;
+                    }
+                });
+                if (failed) {
+                    reject('failed to upload game files to s3');
+                } else {
+                    resolve('success');
+                }
             } catch (err) {
                 reject(err);
             }
@@ -242,8 +252,12 @@ const downloadZip = async (file_uuid) => {
         // download game zip from s3 bucket
         const s3Promise = new Promise(async (resolve, reject) => {
             try {
-                await devcadeS3.downloadGame(file_uuid);
-                resolve('success');
+                const res = await devcadeS3.downloadGame(file_uuid);
+                if (res) {
+                    resolve('success');
+                } else {
+                    reject('failed to download game zip');
+                }
             } catch (err) {
                 reject(err);
             }
@@ -274,8 +288,12 @@ const downloadAndZipMedias = async (file_uuid) => {
         // download game icon and banner from s3 bucket
         const s3Promise = new Promise(async (resolve, reject) => {
             try {
-                await devcadeS3.downloadMedias(file_uuid);
-                resolve('success');
+                const res = await devcadeS3.downloadMedias(file_uuid);
+                if (res) {
+                    resolve('success');
+                } else {
+                    reject('failed to download medias zip');
+                }
             } catch (err) {
                 reject(err);
             }
@@ -307,8 +325,12 @@ const downloadIcon = async (file_uuid) => {
         // download game zip from s3 bucket
         const s3Promise = new Promise(async (resolve, reject) => {
             try {
-                await devcadeS3.downloadIcon(file_uuid);
-                resolve('success');
+                const res = await devcadeS3.downloadIcon(file_uuid);
+                if (res) {
+                    resolve('success');
+                } else {
+                    reject('failed to download icon');
+                }
             } catch (err) {
                 reject(err);
             }
@@ -317,9 +339,9 @@ const downloadIcon = async (file_uuid) => {
         if (s3Res !== 'success') {
             throw s3Res;
         }
-        console.log('before')
+
         await devcadeS3.waitForIcon(file_uuid);
-        console.log('after')
+
         return true;
     } catch (err) {
         console.log(err);
@@ -332,8 +354,12 @@ const downloadBanner = async (file_uuid) => {
         // download game zip from s3 bucket
         const s3Promise = new Promise(async (resolve, reject) => {
             try {
-                await devcadeS3.downloadBanner(file_uuid);
-                resolve('success');
+                const res = await devcadeS3.downloadBanner(file_uuid);
+                if (res) {
+                    resolve('success');
+                } else {
+                    reject('failed to download banner');
+                }
             } catch (err) {
                 reject(err);
             }
