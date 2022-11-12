@@ -64,6 +64,7 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
         
         if (!zipContent) {
             // failed to unzip or verify zip file content
+            console.log("NO ZIP CONTENT ---- FAIL");
             s3utils.deleteLocalFiles(file_uuid);
             return res.status(500).send("Upload game failed! Try again later.");
         }
@@ -75,6 +76,7 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
 
         if (!gameFileHash) {
             // failed to hash, zip or upload game files to s3 bucket
+            console.log("NO GAME FILE HAS ---- FAIL");
             s3utils.deleteLocalFiles(file_uuid);
             return res.status(500).send("Upload game failed! Try again later.");
         }
@@ -89,7 +91,7 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
         // Success, so create game record in the database
         var pool = undefined;
         try {
-            pool = await db.createPool.connect((err, client, release) => {
+            pool = await db.createPool().connect((err, client, release) => {
                 if (err) {
                     console.error('Error acquiring client', err.stack);
                 }
