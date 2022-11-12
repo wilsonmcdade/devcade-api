@@ -12,11 +12,13 @@ const mime = require('mime-types');
 // utilities
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
-const { response } = require('express');
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, `${process.cwd()}/uploads`)
+        if (!fs.existsSync(s3utils.UPLOADS_DIR)) {
+            fs.mkdirSync(s3utils.UPLOADS_DIR, { recursive: true });
+        }
+        cb(null, s3utils.UPLOADS_DIR);
     },
     filename: (req, file, cb) => {
         cb(null, `${uuidv4()}.zip`);

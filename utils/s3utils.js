@@ -18,7 +18,7 @@ const unzipFile = async (file_uuid) => {
     const jszipInstance = new jszip();
     const result = await jszipInstance.loadAsync(fileContent);
 
-    console.log(result.files);
+    //console.log(result.files);
 
     // validate zip contents
     const verifInfoArr = [...(new Set(Object.values(result.files).map(file => file.name.split('/')[0])))];
@@ -46,6 +46,10 @@ const unzipFile = async (file_uuid) => {
         }
         // create the file to place items in
         fs.mkdirSync(`${devcadeS3.UPLOADS_DIR}/${file_uuid}`);
+
+        for (var key of keys) {
+            const items = result.files
+        }
 
         // create files and put them into the directory
         for (let key of keys) {
@@ -175,7 +179,8 @@ const zipGameFilesAndUpload = async (file_uuid, zipContentFiles) => {
         // zip game files
         await zipDirectory(
             `${devcadeS3.UPLOADS_DIR}/${file_uuid}/${zipContentFiles.gameDir}`, 
-            `${devcadeS3.UPLOADS_DIR}/${file_uuid}/${file_uuid}.zip`
+            `${devcadeS3.UPLOADS_DIR}/${file_uuid}/${file_uuid}.zip`,
+            'publish'
         );
 
         // get proper files for uploading to s3
@@ -223,13 +228,13 @@ const zipGameFilesAndUpload = async (file_uuid, zipContentFiles) => {
  * @param {String} outPath: /path/to/created.zip
  * @returns {Promise}
  */
-const zipDirectory = (sourceDir, outPath) => {
+const zipDirectory = (sourceDir, outPath, zipRootDir = false) => {
     const archive = archiver('zip', { zlib: { level: 9 }});
     const stream = fs.createWriteStream(outPath);
 
     return new Promise((resolve, reject) => {
         archive
-            .directory(sourceDir, false)
+            .directory(sourceDir, zipRootDir)
             .on('error', err => reject(err))
             .pipe(stream);
 
