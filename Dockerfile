@@ -18,10 +18,10 @@ COPY . .
 
 # Permissions
 RUN chmod -R 775 .
-RUN chown -R node: .
+RUN chown -R node:node .
 
 # Entrypoint
-USER node
+USER node:node
 EXPOSE 8080
 CMD ["npm", "start"]
 
