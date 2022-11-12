@@ -2,7 +2,7 @@ const config = require('./config');
 const logger = require('../utils/logger');
 const pg = require('pg');
 
-const pool = new pg.Pool({
+const createPool = () => new pg.Pool({
     host: config.PSQL_URI,
     user: config.PSQL_USER,
     port: config.PSQL_PORT,
@@ -60,6 +60,6 @@ const openConnection = async (callback) => {
 };
 
 module.exports = {
-    pool,
+    createPool,
     query
 };

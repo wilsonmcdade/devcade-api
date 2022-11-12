@@ -87,8 +87,9 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
         console.log(query);
 
         // Success, so create game record in the database
+        var pool = undefined;
         try {
-            db.pool.connect((err, client, release) => {
+            pool = await db.createPool.connect((err, client, release) => {
                 if (err) {
                     console.error('Error acquiring client', err.stack);
                 }
@@ -104,6 +105,10 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
             console.log(err);
             s3utils.deleteLocalFiles(file_uuid);
             return res.status(500).send("Upload game failed! Try again later.");
+        } finally {
+            if (pool) {
+                await pool.end();
+            }
         }
 
         // delete all files related to the game from the server since they are stored in s3
@@ -234,10 +239,11 @@ gamesRouter.get('/download/banner/:gameId', async (req, res) => {
 
 gamesRouter.get('/gamelist/', async (req, res) => {
     const query = `SELECT * FROM game`;
+    var pool = undefined;
     try {
-        const client = await db.pool.connect();
-        const games = await client.query(query);
-        await client.end();
+        pool = await db.createPool().connect();
+        const games = await pool.query(query);
+        await pool.end();
         
         return res.status(200).send(games.rows.map(game => {
             return new Game(
@@ -249,20 +255,28 @@ gamesRouter.get('/gamelist/', async (req, res) => {
         }));
     } catch (e) {
         return res.status(500).send("Failed to retrieve games list");
+    } finally {
+        if (pool) {
+            await pool.end();
+        }
     }
 });
 
 gamesRouter.get('/gamelist/ids', async (req, res) => {
     const query = `SELECT game_id FROM game`;
+    var pool = undefined;
     try {
-        const client = await db.pool.connect();
-        const games = await client.query(query);
-        await client.end();
+        pool = await db.createPool().connect();
+        const games = await pool.query(query);
         
         return res.status(200).send(games.rows.map(game => game["game_id"]));
     } catch (e) {
         console.log(e);
         return res.status(500).send("Failed to retrieve games ids list");
+    } finally {
+        if (pool) {
+            await pool.end();
+        }
     }
 });
 
