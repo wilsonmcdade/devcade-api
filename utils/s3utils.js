@@ -18,8 +18,21 @@ const unzipFile = async (file_uuid) => {
     const jszipInstance = new jszip();
     const result = await jszipInstance.loadAsync(fileContent);
 
-    const validZipContentFiles = verifyZipContent(result);        
-    if (!validZipContentFiles) {
+    console.log(result.files);
+
+    // validate zip contents
+    const verifInfoArr = [...(new Set(Object.values(result.files).map(file => file.name.split('/')[0])))];
+    
+    const supportedImgTypes = ['png', 'jpg', 'jpeg'];
+    const data = {
+        icon: verifInfoArr.find(key => key.includes('icon')),
+        banner: verifInfoArr.find(key => key.includes('banner')),
+        gameDir: verifInfoArr.find(key => !key.includes('icon') && !key.includes('banner'))
+    }
+    // check to make sure no required files are missing and that an icon.<imgtype>, banner.<imgtype> and <gamedir> exist
+    if (verifInfoArr.length !== 3 || !data.icon || !data.banner || !data.gameDir ||
+        !supportedImgTypes.includes(data.icon.split('.')[1]) || !supportedImgTypes.includes(data.banner.split('.')[1]) ||
+        data.gameDir.includes('.')) {
         // zip file may have been missing content
         return false;
     }
@@ -33,23 +46,33 @@ const unzipFile = async (file_uuid) => {
         }
         // create the file to place items in
         fs.mkdirSync(`uploads/${file_uuid}`);
-    
+
         // create files and put them into the directory
         for (let key of keys) {
             const item = result.files[key];
             if (item.dir) {
                 fs.mkdirSync(`uploads/${file_uuid}/${item.name}`);
             } else {
-                fs.writeFileSync(`uploads/${file_uuid}/${item.name}`, Buffer.from(await item.async('arraybuffer')));
+                const fileDirPath = item.name.replace('\\', '/').split('/').slice(0, -1).join('/');
+                const basename = path.basename(item.name);
+                if (!fs.existsSync(fileDirPath)) {
+                    fs.mkdirSync(`uploads/${file_uuid}/${fileDirPath}`, { recursive: true });
+                }
+                fs.writeFileSync(`uploads/${file_uuid}/${fileDirPath}/${basename}`, Buffer.from(await item.async('arraybuffer')));
             }
         }
-    } catch {
+        
+        // return validated files
+        console.log("HERE")
+
+        console.log(data);
+        return data;
+    } catch (err) {
         // failed to create temporary files somewhere
+        console.log(err);
         return false;
     }
 
-    // return validated files
-    return validZipContentFiles;
 }
 
 /**
@@ -63,39 +86,37 @@ const unzipFile = async (file_uuid) => {
  *  - true if soft validation succeeded
  *  - false if soft validation failed
  */
-const verifyZipContent = async (zipContent) => {
+const verifyZipContent = async (zipContent, gameDir) => {
     // get file keys
     const keys = Object.keys(zipContent.files).filter(key => {
         const keyNameArr = key.split('/');
-        return keyNameArr.length === 1 || (keyNameArr.length === 2 && keyNameArr[1].length === 0);
+        return (zipContent.files[key].dir && keyNameArr[0] === gameDir) ||
+            (!zipContent.files[key].dir && (keyNameArr[0].includes('icon') || keyNameArr[0].includes('banner')));
     });
 
+    const nonGameFileCount = (keys.filter(key => {
+        const keyNameArr = key.split('/');
+        return keyNameArr[0] !== gameDir;
+    })).length;
+
+
+
     // make sure num files is 3
-    if (keys.length !== 3) {
+    if (nonGameFileCount !== 2) {
         // missing required files
-        return false;
-    }
-
-    // make sure there is only one directory
-    const numDirs = keys.reduce((sum, key) => {
-        return zipContent.files[key].dir ? sum + 1 : sum
-    }, 0);
-
-    if (numDirs !== 1) {
-        // should only have one game directory
         return false;
     }
 
     // make sure icon.png or icon.jpg exists
     const media = keys.filter(key => {
-        const splitKey = key.split('.');
+        const splitKey = path.basename(key).split('.');
         return !zipContent.files[key].dir && 
             (splitKey[0] === 'icon' || splitKey[0] === 'banner') &&
             (splitKey[1] === 'png' || splitKey[1] === 'jpg' || splitKey[1] === 'jpeg');
     });
 
     const invalidMedia = media.find(key => {
-        const splitKey = key.split('.');
+        const splitKey = path.basename(key).split('.');
         return splitKey[0] !== 'icon' && 
             splitKey[0] !== 'banner' &&
             splitKey[1] !== 'png' &&
@@ -132,7 +153,8 @@ const hashGameFiles = async (file_uuid, gameDirName) => {
 
     try {
         return await hashElement(`uploads/${file_uuid}/${gameDirName}`, options);
-    } catch {
+    } catch (err) {
+        console.log(err);
         return false;
     }
 }
@@ -172,7 +194,7 @@ const zipGameFilesAndUpload = async (file_uuid, zipContentFiles) => {
         // upload files to s3 bucket
         const s3Promise = new Promise((resolve, reject) => {
             try {
-                s3UploadFiles.forEach(file => devcadeS3.uploadGameFile(file_uuid, file));
+                s3UploadFiles.forEach(async file => await devcadeS3.uploadGameFile(file_uuid, file));
                 resolve('success');
             } catch (err) {
                 reject(err);
@@ -211,36 +233,16 @@ const zipDirectory = (sourceDir, outPath) => {
 }
 
 /**
- * Pauses current thread for time ms
- * @param {int} time in ms 
- * @returns 
- */
- const delay = (time) => {
-    return new Promise(resolve => {
-        setTimeout(resolve, time);
-    });
-}
-
-/**
  * Downloads a game zip locally to ~/downloads
  * @param {string} file_uuid 
  * @returns true if success, false if failed
  */
 const downloadZip = async (file_uuid) => {
     try {
-        // Attempt to upload game to the s3 bucket
-        const options = {
-            mode: 'text',
-            pythonOptions: ['-u'],
-            scriptPath: 'pythonScripts',
-            args: file_uuid
-        };
-
-
         // download game zip from s3 bucket
-        const s3Promise = new Promise((resolve, reject) => {
+        const s3Promise = new Promise(async (resolve, reject) => {
             try {
-                devcadeS3.downloadGame(file_uuid);
+                await devcadeS3.downloadGame(file_uuid);
                 resolve('success');
             } catch (err) {
                 reject(err);
@@ -252,13 +254,11 @@ const downloadZip = async (file_uuid) => {
             throw s3Res;
         }
 
-        console.log(`downloads/${file_uuid}/${file_uuid}.zip`);
-        while (!fs.existsSync(`downloads/${file_uuid}/${file_uuid}.zip`)) {
-            await delay(250);
-            console.log("still waiting");
-        }
+        await devcadeS3.waitForGame(file_uuid);
+
         return true;
-    } catch {
+    } catch (err) {
+        console.log(err);
         return false;
     }
 }
@@ -270,18 +270,11 @@ const downloadZip = async (file_uuid) => {
  */
 const downloadAndZipMedias = async (file_uuid) => {
     try {
-        // Attempt to upload game to the s3 bucket
-        const options = {
-            mode: 'text',
-            pythonOptions: ['-u'],
-            scriptPath: 'pythonScripts',
-            args: file_uuid
-        };
         
         // download game icon and banner from s3 bucket
-        const s3Promise = new Promise((resolve, reject) => {
+        const s3Promise = new Promise(async (resolve, reject) => {
             try {
-                devcadeS3.downloadMedias(file_uuid);
+                await devcadeS3.downloadMedias(file_uuid);
                 resolve('success');
             } catch (err) {
                 reject(err);
@@ -294,16 +287,8 @@ const downloadAndZipMedias = async (file_uuid) => {
             throw s3Res;
         }
 
-        var mediasBasenames = (await devcadeS3.getGamesBucketObjects(file_uuid))
-            .filter(key => !key.name.includes(`${file_uuid}.zip`)).map(key => path.basename(key.name));
-
-        console.log(mediasBasenames);
-        
-        // wait for icon and banner to be downloaded
-        while (!fs.existsSync(`downloads/${file_uuid}/medias/${mediasBasenames[0]}`) &&
-            !fs.existsSync(`downloads/${file_uuid}/medias/${mediasBasenames[1]}`)) {
-            await delay(250);
-        }
+        await devcadeS3.waitForBanner(file_uuid);
+        await devcadeS3.waitForIcon(file_uuid);
         
         // zip medias
         await zipDirectory(
@@ -316,6 +301,57 @@ const downloadAndZipMedias = async (file_uuid) => {
         return false;
     }
 }
+
+const downloadIcon = async (file_uuid) => {
+    try {
+        // download game zip from s3 bucket
+        const s3Promise = new Promise(async (resolve, reject) => {
+            try {
+                await devcadeS3.downloadIcon(file_uuid);
+                resolve('success');
+            } catch (err) {
+                reject(err);
+            }
+        });
+        const s3Res = await s3Promise;
+        if (s3Res !== 'success') {
+            throw s3Res;
+        }
+        console.log('before')
+        await devcadeS3.waitForIcon(file_uuid);
+        console.log('after')
+        return true;
+    } catch (err) {
+        console.log(err);
+        return false;
+    }
+};
+
+const downloadBanner = async (file_uuid) => {
+    try {
+        // download game zip from s3 bucket
+        const s3Promise = new Promise(async (resolve, reject) => {
+            try {
+                await devcadeS3.downloadBanner(file_uuid);
+                resolve('success');
+            } catch (err) {
+                reject(err);
+            }
+        });
+
+        const s3Res = await s3Promise;
+        if (s3Res !== 'success') {
+            throw s3Res;
+        }
+
+        await devcadeS3.waitForBanner(file_uuid);
+
+        return true;
+    } catch (err) {
+        console.log(err);
+        return false;
+    }
+};
 
 /**
  * delete local files associated with the game
@@ -337,7 +373,7 @@ const deleteLocalFiles = async (file_uuid) => {
                     
                     if (fs.existsSync(`uploads/${file_uuid}`)) {
                         while (fs.readdirSync(`uploads/${file_uuid}`).length !== 0) {
-                            await delay(250);
+                            await devcadeS3.delay(250);
                             if (!fs.existsSync(`uploads/${file_uuid}`)) {
                                 break;
                             }
@@ -358,7 +394,7 @@ const deleteLocalFiles = async (file_uuid) => {
                     
                     if (fs.existsSync(`downloads/${file_uuid}`)) {
                         while (fs.readdirSync(`downloads/${file_uuid}`).length !== 0) {
-                            await delay(250);
+                            await devcadeS3.delay(250);
                             if (!fs.existsSync(`downloads/${file_uuid}`)) {
                                 break;
                             }
@@ -377,11 +413,23 @@ const deleteLocalFiles = async (file_uuid) => {
     }
 }
 
+const getBannerLocalPath = async (file_uuid) => {
+    return await devcadeS3.getBannerLocalPath(file_uuid);
+};
+
+const getIconLocalPath = async (file_uuid) => {
+    return await devcadeS3.getIconLocalPath(file_uuid);
+};
+
 module.exports = {
     unzipFile,
     hashGameFiles,
     zipGameFilesAndUpload,
     deleteLocalFiles,
     downloadZip,
-    downloadAndZipMedias
+    downloadAndZipMedias,
+    getBannerLocalPath,
+    getIconLocalPath,
+    downloadIcon,
+    downloadBanner
 };

@@ -12,11 +12,10 @@ const minioClientConfig = {
     secretKey: config.S3_SECRETACCESSKEY
 };
 
-const s3 = new Minio.Client(minioClientConfig);
-
 
 const uploadGameFile = async (gameId, basename) => {
     try {
+        const s3 = new Minio.Client(minioClientConfig);
 
         const file_path = `${UPLOADS_DIR}/${gameId}`;//file_name.replace('\\', '/').split('/').slice(0, -1).join('/');
         const file_name = `${file_path}/${basename}`;
@@ -54,6 +53,8 @@ const uploadGameFile = async (gameId, basename) => {
 
 const downloadGame = async (gameId) => {
     try {
+        const s3 = new Minio.Client(minioClientConfig);
+
         // create download directory if it does not exist
         const file_path = `${DOWNLOADS_DIR}/${gameId}`
         if (!fs.existsSync(file_path)) {
@@ -78,8 +79,97 @@ const downloadGame = async (gameId) => {
     }
 };
 
+const downloadMedia = async (gameId, mediaType) => {
+    try {
+        const s3 = new Minio.Client(minioClientConfig);
+        // create download directory if it does not exist
+        const file_path = `${DOWNLOADS_DIR}/${gameId}/`
+        if (!fs.existsSync(file_path)) {
+            fs.mkdirSync(file_path, { recursive: true });
+        }
+
+        const mediaBasename = path.basename((await getGamesBucketObjects(gameId))
+            .find(key => key.name.includes(mediaType)).name);
+
+        // Download the game zip
+        const file_dest = `${file_path}/medias/${mediaBasename}`;
+        console.log(file_dest);
+        const key = `${gameId}/${mediaBasename}`;
+            await s3.fGetObject(
+                config.S3_GAMES_BUCKET, 
+                key,
+                file_dest,
+                (err) => {
+                    if (err) {
+                        throw err
+                    }
+                    console.log(`Downloaded ${key}`);
+                });
+    } catch (e) {
+        console.log('Error:', e);
+    }
+};
+
+const downloadBanner = async (gameId) => {
+    return await downloadMedia(gameId, 'banner');
+};
+
+const downloadIcon = async (gameId) => {
+    return await downloadMedia(gameId, 'icon');
+};
+
+const waitForFile = async (gameId, localFileDir, gameFileType) => {
+    const basename = path.basename((await getGamesBucketObjects(gameId))
+        .find(key => key.name.includes(gameFileType)).name);
+
+    console.log(`${localFileDir}/${basename}`);
+    while (!fs.existsSync(`${localFileDir}/${basename}`)) {
+        console.log('waiting');
+        await delay(250);
+    }
+}
+
+const waitForGame = async (gameId) => {
+    while (!fs.existsSync(`downloads/${gameId}/${gameId}.zip`)) {
+        await delay(250);
+        console.log("still waiting");
+    }
+};
+
+const waitForIcon = async (gameId) => {
+    await waitForFile(gameId, `${DOWNLOADS_DIR}/${gameId}/medias`, 'icon');
+};
+
+const waitForBanner = async (gameId) => {
+    await waitForFile(gameId, `${DOWNLOADS_DIR}/${gameId}/medias`, 'banner');
+};
+
+const getBannerLocalPath = async (gameId) => {
+    const basename = path.basename((await getGamesBucketObjects(gameId))
+        .find(key => key.name.includes('banner')).name);
+    return `${DOWNLOADS_DIR}/${gameId}/medias/${basename}`;
+}
+
+const getIconLocalPath = async (gameId) => {
+    const basename = path.basename((await getGamesBucketObjects(gameId))
+        .find(key => key.name.includes('icon')).name);
+    return `${DOWNLOADS_DIR}/${gameId}/medias/${basename}`;
+}
+
+/**
+ * Pauses current thread for time ms
+ * @param {int} time in ms 
+ * @returns 
+ */
+ const delay = (time) => {
+    return new Promise(resolve => {
+        setTimeout(resolve, time);
+    });
+}
+
 const downloadMedias = async (gameId) => {
     try {
+        const s3 = new Minio.Client(minioClientConfig);
         // create download directory if it does not exist
         const file_path = `${DOWNLOADS_DIR}/${gameId}/medias`
         if (!fs.existsSync(file_path)) {
@@ -112,6 +202,7 @@ const downloadMedias = async (gameId) => {
 
 const getAllBuckets = () => {
     try {
+        const s3 = new Minio.Client(minioClientConfig);
         s3.listBuckets((err, buckets) => {
             console.log(buckets);
         });
@@ -121,6 +212,7 @@ const getAllBuckets = () => {
 };
 
 const getBucketObjects = async (bucket, prefix = '') => {
+    const s3 = new Minio.Client(minioClientConfig);
     const objectsList = await new Promise((resolve, reject) => {
         const objectsListTemp = [];
         
@@ -146,12 +238,21 @@ const testGameId = "66f3b024-92da-478e-8985-8c030de46a48";
 //getAllBuckets();
 //downloadGame(testGameId);
 //downloadMedias(testGameId);
-//getBucketObjects(config.S3_GAMES_BUCKET);;
+//getBucketObjects(config.S3_GAMES_BUCKET);
+//getGamesBucketObjects("66f3b024-92da-478e-8985-8c030de46a48");
 
 module.exports = {
     uploadGameFile,
     downloadGame,
     downloadMedias,
+    downloadBanner, 
+    downloadIcon,
     getGamesBucketObjects,
-    getAllBuckets
+    getAllBuckets,
+    waitForGame,
+    waitForIcon,
+    waitForBanner,
+    delay,
+    getBannerLocalPath,
+    getIconLocalPath
 };

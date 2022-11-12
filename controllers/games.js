@@ -7,6 +7,7 @@ const db = require('../utils/database');
 const s3utils = require('../utils/s3utils');
 const gamesRouter = require('express').Router();
 const Game = require('../models/game');
+const mime = require('mime-types');
 
 // utilities
 const multer = require('multer');
@@ -54,17 +55,17 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
 
         const file_uuid = file.filename.split('.')[0];
 
+
         // unzip file
         // check zip contains 3 files: one dir, two files (icon.png/jpg and banner.png/jpg)
         const zipContent = await s3utils.unzipFile(file_uuid)
         
-
         if (!zipContent) {
             // failed to unzip or verify zip file content
             s3utils.deleteLocalFiles(file_uuid);
             return res.status(500).send("Upload game failed! Try again later.");
         }
-
+        
         // hash and zip game files, then upload each file to the s3 bucket individually
         const gameFileHash = await s3utils.zipGameFilesAndUpload(file_uuid, zipContent);
 
@@ -98,6 +99,7 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
                 });
             });
         } catch (err) {
+            console.log(err);
             s3utils.deleteLocalFiles(file_uuid);
             return res.status(500).send("Upload game failed! Try again later.");
         }
@@ -168,6 +170,66 @@ gamesRouter.get('/download/medias/:gameId', async (req, res) => {
     }
 });
 
+gamesRouter.get('/download/icon/:gameId', async (req, res) => {
+    const gameId = req.params.gameId;
+    try {
+        if (!(await s3utils.downloadIcon(gameId))) {
+            return res.status(500).send("Failed to fetch game medias from s3 bucket");
+        }
+        console.log("PASSED");
+
+        const filePath = await s3utils.getIconLocalPath(gameId);
+        const destFile = `${gameId}-${path.basename(filePath)}`;
+        const stat = fs.statSync(filePath);
+
+        res.writeHead(200, {
+            'Content-Type': mime.lookup(path.basename(filePath)),
+            'Content-Disposition': `attachment; filename=${path.basename(destFile)}`,
+            'Content-Length': stat.size,
+            'File-Name': path.basename(destFile)
+        });
+
+        var readStream = fs.createReadStream(filePath);
+        return readStream.pipe(res);
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send("Failed to download icon");
+    } finally {
+        console.log("FUCK");
+        // delete all files related to the game from the server since they have been sent to the user
+        s3utils.deleteLocalFiles(gameId);
+    }
+});
+
+gamesRouter.get('/download/banner/:gameId', async (req, res) => {
+    const gameId = req.params.gameId;
+
+    try {
+        if (!(await s3utils.downloadBanner(gameId))) {
+            return res.status(500).send("Failed to fetch game medias from s3 bucket");
+        }
+
+        const filePath = await s3utils.getBannerLocalPath(gameId);
+        const destFile = `${gameId}-${path.basename(filePath)}`;
+        const stat = fs.statSync(filePath);
+
+        res.writeHead(200, {
+            'Content-Type': mime.lookup(path.basename(filePath)),
+            'Content-Disposition': `attachment; filename=${path.basename(destFile)}`,
+            'Content-Length': stat.size,
+            'File-Name': path.basename(destFile)
+        });
+
+        var readStream = fs.createReadStream(filePath);
+        return readStream.pipe(res);
+    } catch (err) {
+        return res.status(500).send("Failed to download icon");
+    } finally {
+        // delete all files related to the game from the server since they have been sent to the user
+        s3utils.deleteLocalFiles(gameId);
+    }
+});
+
 gamesRouter.get('/gamelist/', async (req, res) => {
     const query = `SELECT * FROM game`;
     try {
@@ -197,6 +259,7 @@ gamesRouter.get('/gamelist/ids', async (req, res) => {
         
         return res.status(200).send(games.rows.map(game => game["game_id"]));
     } catch (e) {
+        console.log(e);
         return res.status(500).send("Failed to retrieve games ids list");
     }
 });
