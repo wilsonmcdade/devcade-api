@@ -1,7 +1,9 @@
 const logger = require('./logger');
+const os = require('os');
 
 const requestLogger = (request, response, next) => {
     const ip = request.ip.split(',')[0].split(':').slice(-1)[0];
+    logger.info('User:  ', os.userInfo());
     logger.info('IP:    ', ip === '1' ? 'localhost' : ip);
     logger.info('Method:', request.method);
     logger.info('Path:  ', request.path);
