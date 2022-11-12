@@ -45,7 +45,7 @@ const unzipFile = async (file_uuid) => {
             return false;
         }
         // create the file to place items in
-        fs.mkdirSync(`${devcadeS3.UPLOADS_DIR}/${file_uuid}`);
+        fs.mkdirSync(`${devcadeS3.UPLOADS_DIR}/${file_uuid}`, { recursive: true });
 
         for (var key of keys) {
             const items = result.files
@@ -55,7 +55,7 @@ const unzipFile = async (file_uuid) => {
         for (let key of keys) {
             const item = result.files[key];
             if (item.dir) {
-                fs.mkdirSync(`${devcadeS3.UPLOADS_DIR}/${file_uuid}/${item.name}`);
+                fs.mkdirSync(`${devcadeS3.UPLOADS_DIR}/${file_uuid}/${item.name}`, { recursive: true });
             } else {
                 const fileDirPath = item.name.replace('\\', '/').split('/').slice(0, -1).join('/');
                 const basename = path.basename(item.name);
