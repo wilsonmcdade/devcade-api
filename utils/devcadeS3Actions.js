@@ -3,8 +3,11 @@ const path = require('path');
 const config = require('./config');
 const Minio = require('minio');
 
-const DOWNLOADS_DIR = path.join(__dirname, '/../downloads');
-const UPLOADS_DIR = path.join(__dirname, '/../uploads');
+// const DOWNLOADS_DIR = path.join(__dirname, '/../downloads');
+// const UPLOADS_DIR = path.join(__dirname, '/../uploads');
+
+const DOWNLOADS_DIR = '/tmp/downloads';
+const UPLOADS_DIR = '/tmp/uploads';
 
 const minioClientConfig = {
     endPoint: config.S3_ENDPOINT,
