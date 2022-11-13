@@ -120,7 +120,7 @@ const getMediaS3Link = async (gameId, mediaType) => {
     const media = (await getGamesBucketObjects(gameId)).find(key => key.name.includes(mediaType));
     if (media) {
         const mediaBasename = path.basename(media.name);
-        return `${config.S3_ENDPOINT}/${config.S3_GAMES_BUCKET}/${gameId}/${mediaBasename}`;
+        return `https://${config.S3_ENDPOINT}/${config.S3_GAMES_BUCKET}/${gameId}/${mediaBasename}`;
     }
     return "";
 }
