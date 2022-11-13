@@ -51,12 +51,13 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
         const file = req.file;
         // The name of the game
         const game_name = req.body.title;
+        // The description of the game
+        const game_description = req.body.description ? req.body.description : "";
 
         console.log(game_name);
         console.log(file);
 
         const file_uuid = file.filename.split('.')[0];
-
 
         // unzip file
         // check zip contains 3 files: one dir, two files (icon.png/jpg and banner.png/jpg)
@@ -84,8 +85,8 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
         // if all of this succeeded, record game (title, s3 uuid, author name, game files hash value)        
         const query = 
             "INSERT INTO " + 
-            "game(game_id, author_username, upload_date, game_name, hash) " +
-            `VALUES ('${file.filename.split('.')[0]}', 'PLACEHOLDER_AUTHOR', NOW(), '${game_name}', '${gameFileHash.hash}');`;
+            "game(game_id, author_username, upload_date, game_name, hash, description) " +
+            `VALUES ('${file.filename.split('.')[0]}', 'PLACEHOLDER_AUTHOR', NOW(), '${game_name}', '${gameFileHash.hash}', '${game_description}');`;
         console.log(query);
 
         // Success, so create game record in the database
@@ -94,12 +95,14 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
             pool = await db.createPool().connect((err, client, release) => {
                 if (err) {
                     console.error('Error acquiring client', err.stack);
+                    throw err;
                 }
 
                 client.query(query, (err, result) => {
                     release();
                     if (err) {
                         console.error('Error executing query', err.stack);
+                        throw err;
                     }
                 });
             });
@@ -278,6 +281,7 @@ gamesRouter.get('/gamelist/', async (req, res) => {
                 games.rows[i]["upload_date"],
                 games.rows[i]["game_name"],
                 games.rows[i]["hash"],
+                games.rows[i]["description"],
                 iconLink,
                 bannerLink));
         }
