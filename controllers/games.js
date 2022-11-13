@@ -151,6 +151,26 @@ gamesRouter.get('/download/:gameId', async (req, res) => {
     }
 });
 
+gamesRouter.get('/download/icon/inline/:gameId', async (req, res) => {
+    const gameId = req.params.gameId;
+    try {
+        return res.status(200).send(await s3utils.getIconS3Link(gameId));
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send("Failed to fetch icon from s3 bucket");
+    }
+});
+
+gamesRouter.get('/download/banner/inline/:gameId', async (req, res) => {
+    const gameId = req.params.gameId;
+    try {
+        return res.status(200).send(await s3utils.getBannerS3Link(gameId));
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send("Failed to fetch banner from s3 bucket");
+    }
+});
+
 gamesRouter.get('/download/medias/:gameId', async (req, res) => {
     const gameId = req.params.gameId;
     try {
@@ -193,7 +213,7 @@ gamesRouter.get('/download/icon/:gameId', async (req, res) => {
 
         res.writeHead(200, {
             'Content-Type': mime.lookup(path.basename(filePath)),
-            'Content-Disposition': `attachment; filename=${path.basename(destFile)}`,
+            'Content-Disposition': `inline; filename=${path.basename(destFile)}`,
             'Content-Length': stat.size,
             'File-Name': path.basename(destFile)
         });
@@ -247,15 +267,23 @@ gamesRouter.get('/gamelist/', async (req, res) => {
         const games = await pool.query(query);
         await pool.end();
         
-        return res.status(200).send(games.rows.map(game => {
-            return new Game(
-                game["game_id"], 
-                game["author_username"],
-                game["upload_date"],
-                game["game_name"],
-                game["hash"]);
-        }));
+        const gamesList = [];
+        for (var i in games.rows) {
+            const gameId = games.rows[i]["game_id"];
+            const iconLink = await s3utils.getIconS3Link(gameId);
+            const bannerLink = await s3utils.getBannerS3Link(gameId);
+            gamesList.push(new Game(
+                games.rows[i]["game_id"], 
+                games.rows[i]["author_username"],
+                games.rows[i]["upload_date"],
+                games.rows[i]["game_name"],
+                games.rows[i]["hash"],
+                iconLink,
+                bannerLink));
+        }
+        return res.status(200).send(gamesList);
     } catch (e) {
+        console.log(e);
         return res.status(500).send("Failed to retrieve games list");
     } finally {
         if (pool) {
