@@ -263,7 +263,7 @@ gamesRouter.get('/download/banner/:gameId', async (req, res) => {
 });
 
 gamesRouter.get('/gamelist/', async (req, res) => {
-    const query = `SELECT * FROM game`;
+    const query = `SELECT * FROM game ORDER BY name ASC`;
     var pool = undefined;
     try {
         pool = await db.createPool().connect();
