@@ -280,6 +280,28 @@ const getGamesBucketObjects = async (gameId) => {
     return await getBucketObjects(config.S3_GAMES_BUCKET, gameId);
 }
 
+const deleteGameFiles = async (gameId) => {
+    var objectsList = [];
+    var objectsStream = s3Client.listObjectsV2(config.S3_GAMES_BUCKET, gameId, true, '');
+
+    objectsStream.on('data', (obj) => {
+        objectsList.push(obj.name);
+    });
+
+    objectsStream.on('error', (err) => {
+        console.log(err);
+    });
+
+    objectsStream.on('end', () => {
+        s3.removeObjects(config.S3_GAMES_BUCKET, objectsList, (err) => {
+            if (err) {
+                return console.log(`Unable to delete game files for game with ${gameId}`);
+            }
+            console.log(`Successfully deleted game with id ${gameId}`);
+        });
+    });
+};
+
 module.exports = {
     uploadGameFile,
     downloadGame,
@@ -296,6 +318,7 @@ module.exports = {
     getIconLocalPath,
     getIconS3Link,
     getBannerS3Link,
+    deleteGameFiles,
     UPLOADS_DIR,
     DOWNLOADS_DIR
 };

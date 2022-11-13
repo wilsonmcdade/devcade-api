@@ -75,67 +75,7 @@ const unzipFile = async (file_uuid) => {
 
 }
 
-/**
- * Helper function that hecks to see that zip file 
- * contains 3 files:
- *  - A folder (assumed to contain game data)
- *  - icon.png/jpg (an icon image for the game)
- *  - banner.png/jpg (a banner image for the game)
- * 
- * Returns:
- *  - true if soft validation succeeded
- *  - false if soft validation failed
- */
-const verifyZipContent = async (zipContent, gameDir) => {
-    // get file keys
-    const keys = Object.keys(zipContent.files).filter(key => {
-        const keyNameArr = key.split('/');
-        return (zipContent.files[key].dir && keyNameArr[0] === gameDir) ||
-            (!zipContent.files[key].dir && (keyNameArr[0].includes('icon') || keyNameArr[0].includes('banner')));
-    });
-
-    const nonGameFileCount = (keys.filter(key => {
-        const keyNameArr = key.split('/');
-        return keyNameArr[0] !== gameDir;
-    })).length;
-
-
-
-    // make sure num files is 3
-    if (nonGameFileCount !== 2) {
-        // missing required files
-        return false;
-    }
-
-    // make sure icon.png or icon.jpg exists
-    const media = keys.filter(key => {
-        const splitKey = path.basename(key).split('.');
-        return !zipContent.files[key].dir && 
-            (splitKey[0] === 'icon' || splitKey[0] === 'banner') &&
-            (splitKey[1] === 'png' || splitKey[1] === 'jpg' || splitKey[1] === 'jpeg');
-    });
-
-    const invalidMedia = media.find(key => {
-        const splitKey = path.basename(key).split('.');
-        return splitKey[0] !== 'icon' && 
-            splitKey[0] !== 'banner' &&
-            splitKey[1] !== 'png' &&
-            splitKey[1] !== 'jpg' &&
-            splitKey[1] !== 'jpeg';
-    });
-
-    if (invalidMedia) {
-        // some file aside from the required files exists
-        return false;
-    }
-
-    // return the name of the game directory
-    return {
-        gameDir: keys.find(key => zipContent.files[key].dir),
-        iconFilename: media.find(key => key.split('.')[0] === 'icon'),
-        bannerFilename: media.find(key => key.split('.')[0] === 'banner')
-    };
-}
+const deleteGame = async (gameId) => devcadeS3.deleteGameFiles(gameId);
 
 /**
  * Hashes game files and returns a MD5 hash of
@@ -460,6 +400,7 @@ module.exports = {
     getIconLocalPath,
     downloadIcon,
     downloadBanner,
+    deleteGame,
     getIconS3Link: devcadeS3.getIconS3Link,
     getBannerS3Link: devcadeS3.getBannerS3Link,
     DOWNLOADS_DIR: devcadeS3.DOWNLOADS_DIR,

@@ -53,6 +53,8 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
         const game_name = req.body.title;
         // The description of the game
         const game_description = req.body.description ? req.body.description : "";
+        // The name of the author
+        const author = req.body.author ? req.body.author : "";
 
         console.log(game_name);
         console.log(file);
@@ -86,7 +88,7 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
         const query = 
             "INSERT INTO " + 
             "game(game_id, author_username, upload_date, game_name, hash, description) " +
-            `VALUES ('${file.filename.split('.')[0]}', 'PLACEHOLDER_AUTHOR', NOW(), '${game_name}', '${gameFileHash.hash}', '${game_description}');`;
+            `VALUES ('${file.filename.split('.')[0]}', '${author}', NOW(), '${game_name}', '${gameFileHash.hash}', '${game_description}');`;
         console.log(query);
 
         // Success, so create game record in the database
@@ -121,6 +123,40 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
 
         // game file successfully uploaded
         return res.sendStatus(200);
+    }
+});
+
+/**
+ * Attempts to delete a game to the s3 bucket and record its record in the
+ * devcade postgres DB
+ */
+ gamesRouter.post('/delete/:gameId', upload.single('file'), async (req, res) => {
+    const gameId = req.params.gameId;
+
+    // check to make sure the game exists
+    const query = `SELECT COUNT(*) as num_games FROM game WHERE game_id = '${gameId}'`;
+
+    var pool = undefined;
+    try {
+        pool = await db.createPool().connect();
+        const response = await pool.query(query);
+        if (response["num_games"] === 0) {
+            return res.status(400).send(`game with id does not exist: ${gameId}`);
+        } else {
+            // Remove game from database
+            query = `DELETE FROM game WHERE game_id = '${gameId}'`
+            await pool.query(query);
+        }
+        // delete game from s3
+        s3utils.deleteGame(gameId);
+        return res.sendStatus(200);
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send(`Failed to delete game with id: ${gameId}`);
+    } finally {
+        if (pool) {
+            await pool.end();
+        }
     }
 });
 
