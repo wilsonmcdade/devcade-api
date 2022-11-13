@@ -127,10 +127,10 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
 });
 
 /**
- * Attempts to delete a game to the s3 bucket and record its record in the
+ * Attempts to delete a game to the s3 bucket and remove its record from the
  * devcade postgres DB
  */
- gamesRouter.post('/delete/:gameId', upload.single('file'), async (req, res) => {
+ gamesRouter.post('/delete/:gameId',  async (req, res) => {
     const gameId = req.params.gameId;
 
     // check to make sure the game exists
