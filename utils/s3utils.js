@@ -197,7 +197,8 @@ const zipGameFilesAndUpload = async (file_uuid, zipContentFiles) => {
             try {
                 var failed = false;
                 s3UploadFiles.forEach(async file => {
-                    const res = await devcadeS3.uploadGameFile(file_uuid, file);
+                    const isMediaFile = file !== zipContentFiles.gameDir;
+                    const res = await devcadeS3.uploadGameFile(file_uuid, file, isMediaFile);
                     if (!res) {
                         failed = true;
                     }
@@ -459,6 +460,8 @@ module.exports = {
     getIconLocalPath,
     downloadIcon,
     downloadBanner,
+    getIconS3Link: devcadeS3.getIconS3Link,
+    getBannerS3Link: devcadeS3.getBannerS3Link,
     DOWNLOADS_DIR: devcadeS3.DOWNLOADS_DIR,
     UPLOADS_DIR: devcadeS3.UPLOADS_DIR
 };

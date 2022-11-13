@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const config = require('./config');
 const Minio = require('minio');
+const mime = require('mime-types');
 
 // const DOWNLOADS_DIR = path.join(__dirname, '/../downloads');
 // const UPLOADS_DIR = path.join(__dirname, '/../uploads');
@@ -17,7 +18,7 @@ const minioClientConfig = {
 };
 
 
-const uploadGameFile = async (gameId, basename) => {
+const uploadGameFile = async (gameId, basename, isMediaFile = false) => {
     try {
         const s3 = new Minio.Client(minioClientConfig);
 
@@ -37,17 +38,33 @@ const uploadGameFile = async (gameId, basename) => {
             if (err) {
                 throw err;
             }
-            await s3.putObject(
-                config.S3_GAMES_BUCKET, 
-                `${gameId}/${basename}`,
-                fileStream,
-                stats.size,
-                (err, objInfo) => {
-                    if (err) {
-                        throw err;
-                    }
-                    console.log('Upload Success', objInfo);
-                });
+            if (isMediaFile) {
+                await s3.putObject(
+                    config.S3_GAMES_BUCKET, 
+                    `${gameId}/${basename}`,
+                    fileStream,
+                    stats.size,
+                    { "Content-Type": mime.lookup(basename) },
+                    (err, objInfo) => {
+                        if (err) {
+                            throw err;
+                        }
+                        console.log('Upload Success', objInfo);
+                    });
+            } else {
+                await s3.putObject(
+                    config.S3_GAMES_BUCKET, 
+                    `${gameId}/${basename}`,
+                    fileStream,
+                    stats.size,
+                    (err, objInfo) => {
+                        if (err) {
+                            throw err;
+                        }
+                        console.log('Upload Success', objInfo);
+                    });
+            }
+            
         });
     } catch (e) {
         console.log('Error:', e);
@@ -89,6 +106,24 @@ const downloadGame = async (gameId) => {
         return false;
     }
 };
+
+
+const getIconS3Link = async (gameId) => {
+    return await getMediaS3Link(gameId, 'icon');
+};
+
+const getBannerS3Link = async (gameId) => {
+    return await getMediaS3Link(gameId, 'banner');
+};
+
+const getMediaS3Link = async (gameId, mediaType) => {
+    const media = (await getGamesBucketObjects(gameId)).find(key => key.name.includes(mediaType));
+    if (media) {
+        const mediaBasename = path.basename(media.name);
+        return `${config.S3_ENDPOINT}/${config.S3_GAMES_BUCKET}/${gameId}/${mediaBasename}`;
+    }
+    return "";
+}
 
 const downloadMedia = async (gameId, mediaType) => {
     try {
@@ -245,15 +280,6 @@ const getGamesBucketObjects = async (gameId) => {
     return await getBucketObjects(config.S3_GAMES_BUCKET, gameId);
 }
 
-//uploadGameFile(testGameId, `${UPLOADS_DIR}/${testGameId}.zip`)
-//uploadGameFile(testGameId, `${UPLOADS_DIR}/icon.png`)
-//uploadGameFile(testGameId, `${UPLOADS_DIR}/banner.png`)
-//getAllBuckets();
-//downloadGame(testGameId);
-//downloadMedias(testGameId);
-//getBucketObjects(config.S3_GAMES_BUCKET);
-//getGamesBucketObjects("66f3b024-92da-478e-8985-8c030de46a48");
-
 module.exports = {
     uploadGameFile,
     downloadGame,
@@ -268,6 +294,8 @@ module.exports = {
     delay,
     getBannerLocalPath,
     getIconLocalPath,
+    getIconS3Link,
+    getBannerS3Link,
     UPLOADS_DIR,
     DOWNLOADS_DIR
 };
