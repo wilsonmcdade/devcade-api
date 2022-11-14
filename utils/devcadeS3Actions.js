@@ -281,8 +281,9 @@ const getGamesBucketObjects = async (gameId) => {
 }
 
 const deleteGameFiles = async (gameId) => {
+    const s3 = new Minio.Client(minioClientConfig);
     var objectsList = [];
-    var objectsStream = s3Client.listObjectsV2(config.S3_GAMES_BUCKET, gameId, true, '');
+    var objectsStream = s3.listObjectsV2(config.S3_GAMES_BUCKET, gameId, true, '');
 
     objectsStream.on('data', (obj) => {
         objectsList.push(obj.name);
