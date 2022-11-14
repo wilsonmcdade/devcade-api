@@ -134,7 +134,7 @@ gamesRouter.post('/upload', upload.single('file'), async (req, res) => {
     const gameId = req.params.gameId;
 
     // check to make sure the game exists
-    const query = `SELECT COUNT(*) as num_games FROM game WHERE game_id = '${gameId}'`;
+    let query = `SELECT COUNT(*) as num_games FROM game WHERE game_id = '${gameId}'`;
 
     var pool = undefined;
     try {
