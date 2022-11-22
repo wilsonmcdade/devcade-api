@@ -1,4 +1,4 @@
-FROM node:18-bullseye
+FROM docker.io/node:18-bullseye
 
 # Default node app location
 WORKDIR /usr/src/app
@@ -7,18 +7,15 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm install
 
-# Change cache settings
-RUN mkdir ./my_cache; npm config set cache ./my_cache --global; npm --global cache verify
-
 # Copy the rest of the app
 COPY . .
 
 # Permissions
-RUN chmod -R 775 .
-RUN chown -R node:node .
+RUN chmod -R 775 . && \
+  chgrp -R node .
 
 # Entrypoint
-USER node:node
+USER root:node
 EXPOSE 8080
-CMD ["npm", "start"]
+CMD ["node", "index.js"]
 
