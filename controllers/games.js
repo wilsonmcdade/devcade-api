@@ -318,6 +318,7 @@ gamesRouter.get('/gamelist/', async (req, res) => {
                 games.rows[i]["game_name"],
                 games.rows[i]["hash"],
                 games.rows[i]["description"],
+                games.rows[i]["authrequired"],
                 iconLink,
                 bannerLink));
         }
